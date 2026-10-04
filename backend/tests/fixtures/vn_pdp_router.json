@@ -1,0 +1,61 @@
+{
+  "loaderData": {
+    "(region)/pdp/(product_name_slug$)/(product_id)/page": {
+      "region_info": {
+        "sale_region": "VN"
+      },
+      "page_config": {
+        "global_fe_config": {
+          "page_name": "product_detail"
+        },
+        "components_map": [
+          {
+            "component_name": "product_info",
+            "component_data": {
+              "error_code": 0,
+              "product_info": {
+                "product_id": "1737036472084039604",
+                "seller_id": "7494829868722129844",
+                "title": "500g Chuối Sấy Mè - Thơm Ngon - Giòn ( Chuối Loại 1)",
+                "sold_count": "12808",
+                "images": [
+                  {
+                    "url_list": [
+                      "https://example.com/product.webp"
+                    ]
+                  }
+                ],
+                "price": {
+                  "currency": "VND",
+                  "real_price": "43.965₫",
+                  "original_price": "54.956₫",
+                  "is_interval_price": true
+                },
+                "seller": {
+                  "name": "BĂNG BĂNG FOOD",
+                  "rating_value": 4.7
+                },
+                "review": {
+                  "product_rating": 4.6,
+                  "review_count": "730"
+                }
+              },
+              "categories": [
+                {
+                  "level": 1,
+                  "category_name": "Đồ ăn & Đồ uống"
+                }
+              ],
+              "shop_info": {
+                "sold_count": 31801,
+                "shop_rating": 4.7,
+                "review_count": 1935
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "errors": null
+}

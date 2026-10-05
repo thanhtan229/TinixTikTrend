@@ -12,13 +12,24 @@ from app.api.products import router as products_router
 from app.api.trends import router as trends_router
 from app.api.dashboard import router as dashboard_router
 from app.api.crawler import router as crawler_router
+from app.api.watchlist import router as watchlist_router
+from app.api.alerts import router as alerts_router
+from app.api.diagnostics import router as diagnostics_router
 from app.db.init_db import init_db
+from app.db.session import SessionLocal
+from app.services.alert_service import AlertService
 from app.scheduler.jobs import start_scheduler, shutdown_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    db = SessionLocal()
+    try:
+        alert_service = AlertService(db)
+        alert_service.catch_up_alerts()
+    finally:
+        db.close()
     start_scheduler()
     log_event("app_startup", f"Starting {settings.app_name} in {settings.app_env} mode (Region: {settings.tiktok_region})")
     yield
@@ -66,6 +77,9 @@ app.include_router(products_router, prefix="/api")
 app.include_router(trends_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(crawler_router, prefix="/api")
+app.include_router(watchlist_router, prefix="/api")
+app.include_router(alerts_router, prefix="/api")
+app.include_router(diagnostics_router, prefix="/api")
 
 
 @app.get("/")

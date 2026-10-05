@@ -1,11 +1,14 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime
 
 from app.db.session import get_db
+from app.models.product import Product
 from app.services.product_service import ProductService, get_analyzed_product
+from app.services.export_service import ExportService
 from app.analytics.rising_products import AnalyzedProduct
 from app.analytics.deltas import ensure_utc
 
@@ -85,3 +88,33 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
         analysis=analysis,
         snapshots=snapshots_data,
     )
+
+
+@router.get("/{product_id}/export-history")
+def export_product_history(product_id: int, range: str = Query("24h"), db: Session = Depends(get_db)):
+    """
+    Export chronological historical snapshots for a product as a UTF-8 BOM CSV.
+    Supports only '24h', '7d', '30d'. Rejects 'all' or invalid ranges with 400.
+    """
+    allowed_ranges = {"24h", "7d", "30d"}
+    if range not in allowed_ranges:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Khoảng thời gian '{range}' không được hỗ trợ để xuất CSV. "
+                "Chỉ hỗ trợ: 24h, 7d, 30d. Khoảng 'Tất cả' chỉ hỗ trợ xem trực quan trên giao diện."
+            ),
+        )
+
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
+
+    generator = ExportService.stream_product_history(product_id=product_id, time_range=range)
+    filename = f"product_{product_id}_history_{range}.csv"
+    return StreamingResponse(
+        generator,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+

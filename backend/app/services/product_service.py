@@ -10,10 +10,12 @@ from app.models.product_snapshot import ProductSnapshot
 from app.analytics.deltas import SnapshotData, calculate_product_deltas, ensure_utc
 from app.analytics.scoring import calculate_trend_score
 from app.analytics.rising_products import AnalyzedProduct
+from app.analytics.evidence import calculate_trend_evidence, calculate_trend_reasons
 
 
-def get_analyzed_product(product: Product) -> AnalyzedProduct:
+def get_analyzed_product(product: Product, current_time: Optional[datetime] = None) -> AnalyzedProduct:
     """Converts a DB Product model and its snapshots into an AnalyzedProduct."""
+    now = ensure_utc(current_time) if current_time else datetime.now(timezone.utc)
     snap_data_list = [
         SnapshotData(
             captured_at=s.captured_at,
@@ -26,8 +28,10 @@ def get_analyzed_product(product: Product) -> AnalyzedProduct:
         )
         for s in product.snapshots
     ]
-    deltas = calculate_product_deltas(snap_data_list, current_time=datetime.now(timezone.utc))
-    trend_score = calculate_trend_score(deltas, first_seen_at=product.first_seen_at)
+    deltas = calculate_product_deltas(snap_data_list, current_time=now)
+    trend_score = calculate_trend_score(deltas, first_seen_at=product.first_seen_at, current_time=now)
+    evidence = calculate_trend_evidence(snap_data_list, deltas, current_time=now)
+    reasons = calculate_trend_reasons(deltas, trend_score)
 
     return AnalyzedProduct(
         product_id=product.id,
@@ -42,6 +46,8 @@ def get_analyzed_product(product: Product) -> AnalyzedProduct:
         last_seen_at=ensure_utc(product.last_seen_at),
         deltas=deltas,
         trend_score=trend_score,
+        evidence=evidence,
+        reasons=reasons,
     )
 
 
@@ -80,10 +86,11 @@ class ProductService:
     def get_all_analyzed_products(
         self,
         category: Optional[str] = None,
+        current_time: Optional[datetime] = None,
     ) -> List[AnalyzedProduct]:
         q = self.db.query(Product).options(joinedload(Product.snapshots)).filter(
             Product.id.not_in(select(QuarantinedProduct.product_id)))
         if category:
             q = q.filter(Product.category == category)
         products = q.all()
-        return [get_analyzed_product(p) for p in products]
+        return [get_analyzed_product(p, current_time=current_time) for p in products]

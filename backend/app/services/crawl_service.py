@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.product import Product
 from app.models.crawl_run import CrawlRun
 from app.models.quarantine import QuarantinedProduct
+from app.models.watchlist import WatchlistItem
 from app.collectors.tiktok_shop import TikTokShopCollector, DiscoveryQuery, ExtractedProduct
 from app.collectors.tiktok_shop.exceptions import BlockedError
 from app.collectors.tiktok_shop.session import SessionStateError, session_status
@@ -45,7 +46,7 @@ class CrawlService:
         global _is_crawler_running
         _is_crawler_running = False
 
-    def _upsert_product_and_snapshot(self, extracted: ExtractedProduct, crawl_run: CrawlRun) -> None:
+    def _upsert_product_and_snapshot(self, extracted: ExtractedProduct, crawl_run: CrawlRun, is_user_submitted: bool = False) -> None:
         # Collector output must prove identity; never upsert title-only/video data.
         url = validate_product_url(extracted.url or '')
         if product_id_from_url(url) != extracted.external_product_id or not extracted.title.strip():
@@ -69,7 +70,7 @@ class CrawlService:
                 product.last_seen_at = extracted.captured_at
             for field in ('image_url', 'shop_id', 'shop_name', 'category'):
                 setattr(product, field, getattr(extracted, field))
-            self.snapshot_service.create_snapshot_from_extracted(product_id=product.id,
+            snapshot = self.snapshot_service.create_snapshot_from_extracted(product_id=product.id,
                 extracted=extracted, crawl_run_id=crawl_run.id)
             if created:
                 crawl_run.products_created += 1
@@ -77,6 +78,26 @@ class CrawlService:
                 crawl_run.products_updated += 1
             crawl_run.snapshots_created += 1
             self.db.commit()
+
+            # Phase 3: Post-commit actions in separate transactions
+            # 1. User-submitted valid PDP becomes watched
+            if is_user_submitted or (crawl_run and crawl_run.source != 'scheduled'):
+                try:
+                    if self.db.query(WatchlistItem).filter_by(product_id=product.id).first() is None:
+                        self.db.add(WatchlistItem(product_id=product.id, notes="User submitted PDP"))
+                        self.db.commit()
+                except Exception as exc:
+                    self.db.rollback()
+                    logger.warning(f"Could not auto-watch user product {product.id}: {exc}")
+
+            # 2. Post-commit alert evaluator in separate transaction
+            try:
+                from app.services.alert_service import AlertService
+                alert_service = AlertService(self.db)
+                alert_service.evaluate_snapshot(product_id=product.id, snapshot_id=snapshot.id)
+            except Exception as exc:
+                self.db.rollback()
+                logger.error(f"Post-commit alert evaluation failed for product {product.id}, snapshot {snapshot.id}: {exc}")
         except Exception:
             self.db.rollback()
             raise
@@ -99,10 +120,26 @@ class CrawlService:
                 self.db.refresh(crawl_run)
                 run_id = crawl_run.id
                 collector = TikTokShopCollector()
-                # Oldest observed first: rotate a bounded set instead of starving older products.
-                tracked = self.db.query(Product).filter(Product.url.is_not(None),
-                    Product.id.not_in(select(QuarantinedProduct.product_id))).order_by(Product.last_seen_at).limit(
-                    settings.tracked_products_per_run).all()
+
+                # Phase 3: Track which external IDs were explicitly submitted by the user
+                user_submitted_ids = set()
+                if product_urls:
+                    for candidate in product_urls:
+                        try:
+                            clean = validate_product_url(candidate)
+                            user_submitted_ids.add(product_id_from_url(clean))
+                        except ValueError:
+                            pass
+
+                # Oldest observed first from Watchlist: rotate a bounded set instead of starving older products.
+                tracked = self.db.query(Product).join(
+                    WatchlistItem, WatchlistItem.product_id == Product.id
+                ).filter(
+                    Product.url.is_not(None),
+                    Product.id.not_in(select(QuarantinedProduct.product_id))
+                ).order_by(Product.last_seen_at).limit(
+                    settings.tracked_products_per_run
+                ).all()
                 candidates = list(product_urls or []) + [p.url for p in tracked]
                 queries = [DiscoveryQuery(keyword=k, limit=10) for k in (keywords or [])]
                 queries += [DiscoveryQuery(category_slug=c, limit=10) for c in (category_slugs or [])]
@@ -136,7 +173,9 @@ class CrawlService:
                     if product.external_product_id in processed:
                         continue
                     try:
-                        self._upsert_product_and_snapshot(product, crawl_run)
+                        self._upsert_product_and_snapshot(
+                            product, crawl_run, is_user_submitted=(product.external_product_id in user_submitted_ids)
+                        )
                         processed.add(product.external_product_id)
                     except Exception:
                         errors.append('Một sản phẩm tìm thấy chưa xác minh được hoặc chưa lưu được.')
@@ -147,7 +186,9 @@ class CrawlService:
                         product = await collector.get_product(url)
                         if product is None:
                             raise ValueError('No verified product payload')
-                        self._upsert_product_and_snapshot(product, crawl_run)
+                        self._upsert_product_and_snapshot(
+                            product, crawl_run, is_user_submitted=(external_id in user_submitted_ids)
+                        )
                         processed.add(external_id)
                     except SessionStateError as exc:
                         self.db.rollback()

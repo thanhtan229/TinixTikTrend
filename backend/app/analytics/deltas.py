@@ -34,6 +34,9 @@ class DeltaMetrics(BaseModel):
     is_anomaly: bool = False
     is_stale: bool = False
     velocity_is_estimated: bool = False
+    has_24h_window: bool = False
+    has_7d_window: bool = False
+    primary_elapsed_hours: Optional[float] = None
     last_observed_at: Optional[datetime] = None
 
 
@@ -74,6 +77,8 @@ def calculate_product_deltas(snapshots: List[SnapshotData], current_time: Option
             setattr(metrics, 'sold_delta_' + label, calculate_delta(latest.sold_count, anchor.sold_count))
             if label in ('24h', '7d'):
                 setattr(metrics, 'review_delta_' + label, calculate_delta(latest.review_count, anchor.review_count))
+    metrics.has_24h_window = anchors.get('24h') is not None
+    metrics.has_7d_window = anchors.get('7d') is not None
     # Prefer recent coverage and scale by the actual elapsed interval.
     baseline = next((anchors[k] for k in ('24h', '12h', '6h')
                      if anchors[k] and anchors[k].sold_count is not None), None)
@@ -85,6 +90,7 @@ def calculate_product_deltas(snapshots: List[SnapshotData], current_time: Option
         hours = (observed - ensure_utc(baseline.captured_at)).total_seconds()/3600
         metrics.sales_velocity_24h = calculate_delta(latest.sold_count, baseline.sold_count) * 24 / hours
         metrics.velocity_is_estimated = abs(hours - 24) > 0.05
+        metrics.primary_elapsed_hours = round(hours, 2)
     # Two disjoint comparable periods are necessary for acceleration.
     for width, recent_key, older_key in [(6, '6h', '12h'), (12, '12h', '24h')]:
         recent, older = anchors[recent_key], anchors[older_key]

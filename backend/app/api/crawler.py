@@ -27,7 +27,19 @@ class CrawlRequest(BaseModel):
     @field_validator("product_urls")
     @classmethod
     def product_links(cls, urls):
-        return [validate_product_url(url) for url in urls] if urls is not None else None
+        if urls is None:
+            return None
+        validated = []
+        errors = []
+        for i, url in enumerate(urls):
+            clean_url = url.strip() if isinstance(url, str) else url
+            try:
+                validated.append(validate_product_url(clean_url))
+            except ValueError as e:
+                errors.append(f"Dòng {i+1}: {e}")
+        if errors:
+            raise ValueError("; ".join(errors))
+        return validated
 
     @field_validator("category_slugs")
     @classmethod

@@ -120,6 +120,19 @@ def test_vn_pdp_tracking_link_validation_and_identity():
     assert extract_product_from_html('<script type="application/ld+json">' + json.dumps(ld) + '</script>', url) is None
 
 
+def test_vn_pdp_slug_and_regional_variations_support():
+    from app.core.urls import validate_product_url, product_id_from_url
+    from app.api.crawler import CrawlRequest
+    slug_url = 'https://shop.tiktok.com/vn/pdp/khay-dung-kinh-ap-trong-chat-luong-cao-tien-ich-ben-bi/1729741207556360748?source=ecommerce_mall&enter_method=feed_list_savings'
+    clean = validate_product_url(slug_url)
+    assert clean == 'https://shop.tiktok.com/vn/pdp/khay-dung-kinh-ap-trong-chat-luong-cao-tien-ich-ben-bi/1729741207556360748'
+    assert product_id_from_url(slug_url) == '1729741207556360748'
+    req = CrawlRequest(product_urls=[slug_url, 'https://shop.tiktok.com/pdp/1733672972590221277'])
+    assert len(req.product_urls) == 2
+    with pytest.raises(ValueError, match=r'Dòng 1:'):
+        CrawlRequest(product_urls=['https://shop.tiktok.com/vn/pdp/invalid_no_id'])
+
+
 @pytest.mark.parametrize('path', ['/vn/pdp/abc', '/vn/pdp/123/extra', '/vn/pdp/123.evil',
     '/vn/pdp/%31%32%33', '/us/pdp/123', '/vn/pdp/../123'])
 def test_vn_pdp_does_not_expand_to_arbitrary_paths(path):

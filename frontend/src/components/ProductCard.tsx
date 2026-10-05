@@ -5,14 +5,18 @@ import Link from "next/link";
 import { TrendMetrics } from "@/types";
 import { formatCurrency, formatNumber, formatSignedNumber, formatDate } from "@/lib/utils";
 import { ScoreBadge } from "./ScoreBadge";
+import { EvidenceBadge } from "./EvidenceBadge";
+import { WatchButton } from "./WatchButton";
 import { TrendingUp, ShoppingBag, Star, Sparkles, ExternalLink, ArrowUpRight } from "lucide-react";
 
 interface ProductCardProps {
   product: TrendMetrics;
   rank?: number;
+  isWatched?: boolean;
+  onToggleWatch?: (productId: number, watched: boolean) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, rank }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, rank, isWatched = false, onToggleWatch }) => {
   const deltas = product.deltas || {};
   const sold24h = deltas.sold_delta_24h;
   const sold7d = deltas.sold_delta_7d;
@@ -25,19 +29,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, rank }) => {
       <div>
         {/* Top Header: Rank & Score */}
         <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
             {rank !== undefined && (
               <span className="flex items-center justify-center w-6 h-6 rounded-md bg-slate-800 text-xs font-bold text-slate-300 border border-slate-700">
                 #{rank}
               </span>
             )}
             {product.category && (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-400 border border-slate-700/60 truncate max-w-[140px]">
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-400 border border-slate-700/60 truncate max-w-[130px]">
                 {product.category}
               </span>
             )}
+            <EvidenceBadge evidence={product.evidence} size="sm" />
           </div>
-          <ScoreBadge score={product.trend_score} hasMomentumEvidence={deltas.sales_velocity_24h != null || deltas.sales_acceleration != null || deltas.review_delta_24h != null} />
+          <div className="flex items-center gap-1.5">
+            <WatchButton
+              productId={product.product_id}
+              isWatched={isWatched}
+              onToggle={(watched) => onToggleWatch?.(product.product_id, watched)}
+              size="sm"
+            />
+            <ScoreBadge score={product.trend_score} hasMomentumEvidence={deltas.sales_velocity_24h != null || deltas.sales_acceleration != null || deltas.review_delta_24h != null} />
+          </div>
         </div>
 
         {/* Thumbnail & Title */}
@@ -104,7 +117,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, rank }) => {
 
         {/* Signals & Badges */}
         <div className="flex flex-wrap gap-1.5 mt-3">
-          {deltas.is_stale && <span className="text-xs text-amber-400">Dữ liệu cũ; cần quét lại</span>}
+          {deltas.is_stale && <span className="text-xs text-amber-400 font-medium">⚠️ Dữ liệu cũ; cần quét lại</span>}
+          {product.evidence?.ranking_state === "insufficient_measured_signal" && (
+            <span className="text-xs text-slate-400 italic">Chưa đủ dữ liệu 2 chu kỳ đo lường</span>
+          )}
           {hasAcceleration && (
             <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
               <TrendingUp className="h-2.5 w-2.5 mr-1" /> Gia tốc mạnh
@@ -116,6 +132,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, rank }) => {
             </span>
           )}
         </div>
+
+        {/* Why Trending Deterministic Reasons */}
+        {product.reasons && product.reasons.length > 0 && (
+          <div className="mt-3 p-2.5 rounded-lg bg-slate-950/40 border border-slate-800/60 space-y-1">
+            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              Lý do xu hướng
+            </div>
+            <div className="space-y-1">
+              {product.reasons.map((r, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-xs text-slate-300">
+                  <span className="text-rose-400 font-bold">•</span>
+                  <span>{r.formatted_text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer Info & Actions */}

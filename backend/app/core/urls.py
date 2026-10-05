@@ -6,7 +6,9 @@ import socket
 from urllib.parse import urlsplit, urlunsplit
 
 TIKTOK_HOSTS = {"tiktok.com", "www.tiktok.com", "shop.tiktok.com"}
-PRODUCT_PATH = re.compile(r"/(?:view/product|product|item|vn/pdp)/(\d+)/?$")
+PRODUCT_PATH = re.compile(
+    r"/(?:view/product|product|item|(?:vn|vi-vn|vi-VN)/pdp|pdp)/(?:[a-zA-Z0-9_\-]+/)?(\d+)/?$"
+)
 
 
 def validate_tiktok_url(url: str) -> str:

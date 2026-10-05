@@ -5,6 +5,21 @@ $ErrorActionPreference='Stop'
 . "$PSScriptRoot\service_common.ps1"
 $services = if ($Target -eq 'All') { @('Backend','Frontend') } else { @($Target) }
 try {
+    # Phase 4: Pre-Start Restore Manifest Guard
+    $backendDir = Join-Path $projectRoot 'backend'
+    $pythonExe = Join-Path $backendDir '.venv\Scripts\python.exe'
+    if (Test-Path $pythonExe) {
+        $prevPythonPath = $env:PYTHONPATH
+        $env:PYTHONPATH = "$backendDir;$env:PYTHONPATH"
+        $guardCheck = & $pythonExe -m app.commands.restore_helper check-guard 2>&1
+        $guardExit = $LASTEXITCODE
+        $env:PYTHONPATH = $prevPythonPath
+        if ($guardExit -ne 0) {
+            Write-Host $guardCheck -ForegroundColor Red
+            throw "Khởi động dịch vụ bị CHẶN bởi restore manifest guard. Chạy 'RESTORE.bat --recover' để xử lý."
+        }
+    }
+
     # Ownership is checked before stopping anything; a port is never proof of ownership.
     foreach ($service in $services) {
         $port = Get-ServicePort $service
@@ -31,15 +46,24 @@ try {
             $arguments = @(('"'+$entry+'"'),'dev','--hostname','127.0.0.1','--port','3000')
         }
         $name = $service.ToLower()
-        $oldDist = $env:NEXT_DIST_DIR
-        try {
-            if ($service -eq 'Frontend') { $env:NEXT_DIST_DIR = '.next-dev' }
-            $process = Start-Process -FilePath $executable -ArgumentList $arguments -WorkingDirectory $workingDir -WindowStyle Hidden `
-                -RedirectStandardOutput (Join-Path $serviceLogs "$name.out.log") -RedirectStandardError (Join-Path $serviceLogs "$name.err.log") -PassThru
-        } finally { $env:NEXT_DIST_DIR = $oldDist }
-        @{ pid=$process.Id; project=$projectRoot; service=$service; started_at=$process.StartTime.ToUniversalTime().ToString('o') } |
+        $outLog = Join-Path $serviceLogs "$name.out.log"
+        $errLog = Join-Path $serviceLogs "$name.err.log"
+        if ($service -eq 'Backend') {
+            $cmdLine = "cmd.exe /d /c `"`"$executable`" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > `"$outLog`" 2> `"$errLog`"`""
+        } else {
+            $cmdLine = "cmd.exe /d /c `"set NEXT_DIST_DIR=.next-dev&& `"$executable`" `"$entry`" dev --hostname 127.0.0.1 --port 3000 > `"$outLog`" 2> `"$errLog`"`""
+        }
+        $r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+            CommandLine = $cmdLine
+            CurrentDirectory = $workingDir
+        }
+        if ($r.ReturnValue -ne 0) {
+            throw "Failed to start $service via WMI (error code $($r.ReturnValue))"
+        }
+        $startTime = (Get-Date).ToUniversalTime().ToString('o')
+        @{ pid=$r.ProcessId; project=$projectRoot; service=$service; started_at=$startTime } |
             ConvertTo-Json | Set-Content -LiteralPath (Join-Path $serviceLogs "$name.pid.json") -Encoding utf8
-        Write-ServiceLog "Started $service PID $($process.Id) at $($process.StartTime.ToUniversalTime().ToString('o'))"
+        Write-ServiceLog "Started $service PID $($r.ProcessId) at $startTime"
     }
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\health_check.ps1" -Target $Target -WaitReady -TimeoutSec $TimeoutSec
     if ($LASTEXITCODE -ne 0) { throw 'Health check failed. Inspect logs/backend.err.log and logs/frontend.err.log.' }

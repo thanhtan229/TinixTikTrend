@@ -1,7 +1,8 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
-from app.models import Category, Product, ProductSnapshot, CrawlRun, ProductVideoLink
+from app.models import Category, Product, ProductSnapshot, CrawlRun, ProductVideoLink, WatchlistItem, SystemMetadata
 from app.core.logging import logger, log_event
 from app.models.quarantine import QuarantinedProduct
 from datetime import datetime, timezone
@@ -39,6 +40,35 @@ def init_db(db: Session = None) -> None:
             if db.get(QuarantinedProduct, product.id) is None:
                 db.add(QuarantinedProduct(product_id=product.id,
                     reason="Legacy unverified video/generated product; historical metrics cannot be trusted."))
+
+        # Phase 3: One-time migration/backfill of the legacy tracked universe
+        bootstrap_marker = db.get(SystemMetadata, "legacy_tracked_backfill_completed")
+        if bootstrap_marker is None:
+            legacy_tracked = db.query(Product).filter(
+                Product.url.is_not(None),
+                Product.id.not_in(select(QuarantinedProduct.product_id))
+            ).all()
+            for product in legacy_tracked:
+                if db.query(WatchlistItem).filter_by(product_id=product.id).first() is None:
+                    db.add(WatchlistItem(
+                        product_id=product.id,
+                        notes="Legacy tracked backfill"
+                    ))
+            db.add(SystemMetadata(
+                key="legacy_tracked_backfill_completed",
+                value="true"
+            ))
+            log_event("db_init", f"Backfilled {len(legacy_tracked)} legacy tracked products to Watchlist.")
+
+        # Phase 4: Compatibility marker for portable database backups
+        compat_marker = db.get(SystemMetadata, "portable_backup_compatibility_version")
+        if compat_marker is None:
+            db.add(SystemMetadata(
+                key="portable_backup_compatibility_version",
+                value="1"
+            ))
+            log_event("db_init", "Seeded portable_backup_compatibility_version = 1")
+
         for run in db.query(CrawlRun).filter(CrawlRun.status == "running").all():
             run.status = "partial" if run.snapshots_created else "failed"
             run.finished_at = datetime.now(timezone.utc)

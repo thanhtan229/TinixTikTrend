@@ -1,9 +1,14 @@
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.watchlist import WatchlistItem
+    from app.models.alert_rule import AlertRule
+    from app.models.alert_event import AlertEvent
 
 
 def utc_now() -> datetime:
@@ -42,6 +47,25 @@ class Product(Base):
     
     video_links: Mapped[List["ProductVideoLink"]] = relationship(
         "ProductVideoLink",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+
+    watchlist_item: Mapped[Optional["WatchlistItem"]] = relationship(
+        "WatchlistItem",
+        back_populates="product",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+    alert_rules: Mapped[List["AlertRule"]] = relationship(
+        "AlertRule",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+
+    alert_events: Mapped[List["AlertEvent"]] = relationship(
+        "AlertEvent",
         back_populates="product",
         cascade="all, delete-orphan",
     )

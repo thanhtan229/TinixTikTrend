@@ -1,10 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProductDetailPage from '@/app/products/[id]/page';
-import { fetchProductDetail } from '@/lib/api';
+import { fetchProductDetail, fetchWatchStatus, fetchAlertRules } from '@/lib/api';
 
 vi.mock('next/navigation', () => ({ useParams: () => ({ id: '21' }), useRouter: () => ({ push: vi.fn() }) }));
-vi.mock('@/lib/api', () => ({ fetchProductDetail: vi.fn() }));
+vi.mock('@/lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api')>();
+  return {
+    ...actual,
+    fetchProductDetail: vi.fn(),
+    fetchWatchStatus: vi.fn().mockResolvedValue({ is_watched: false }),
+    fetchAlertRules: vi.fn().mockResolvedValue([]),
+  };
+});
 vi.mock('@/components/ScoreBadge', () => ({ ScoreBadge: ({ score }: { score: number }) => <span>Score {score}</span> }));
 
 const product = {
@@ -38,7 +46,11 @@ const product = {
 };
 
 describe('product detail recovery', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(fetchWatchStatus).mockResolvedValue({ product_id: 21, is_watched: false });
+    vi.mocked(fetchAlertRules).mockResolvedValue([]);
+  });
 
   it('retries a failed detail request and preserves verified zero values', async () => {
     vi.mocked(fetchProductDetail).mockRejectedValueOnce(new Error('network lost')).mockResolvedValueOnce(product);

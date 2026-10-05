@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from app.analytics.deltas import DeltaMetrics
+from app.analytics.evidence import TrendEvidence, TrendReason
 
 
 class AnalyzedProduct(BaseModel):
@@ -17,6 +18,8 @@ class AnalyzedProduct(BaseModel):
     
     deltas: DeltaMetrics
     trend_score: float
+    evidence: Optional[TrendEvidence] = None
+    reasons: List[TrendReason] = []
 
 
 def rank_rising_products(
@@ -38,6 +41,7 @@ def rank_rising_products(
             p.deltas.sales_velocity_24h or 0,
             p.deltas.sales_acceleration or 0,
             p.deltas.sold_delta_24h or 0,
+            -p.product_id,
         ),
         reverse=True,
     )[:limit]

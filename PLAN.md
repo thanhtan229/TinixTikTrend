@@ -1,6 +1,6 @@
 # Production review remediation plan
 
-Updated: 2026-10-05. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, release qualification, and Phase 5 selection.
+Updated: 2026-10-05. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, release qualification, and Phase 5 plan approval.
 
 ## Baseline Validation: PASS
 
@@ -127,16 +127,19 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 ---
 
-## Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare: SELECTED / PLANNING REQUIRED
+## Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare: PLAN APPROVED
 
 - **Decision State:**
-  - **Phase 5 Status:** `SELECTED / PLANNING REQUIRED`
+  - **Phase 5 Status:** `PLAN APPROVED`
   - **Phase Name:** `Opportunity Workspace — Collections, Saved Views & Product Compare`
-  - **Research Gate:** `CLOSED`
-  - **Research Recommendation:** `RECOMMEND AS NEXT PRODUCT PHASE`
-  - **Research Readiness:** `RESEARCH READY FOR PROJECT CONTROL`
-  - **Implementation:** `NOT AUTHORIZED`
-  - **Phase Plan:** `NOT YET APPROVED`
+  - **Research Gate:** `CLOSED` (no additional research required before implementation)
+  - **Authoritative Plan:** [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md)
+  - **Authoritative Acceptance Criteria Surface:** `P5-AC-01` through `P5-AC-36` (36 authoritative criteria)
+  - **Implementation Status:** `NOT YET AUTHORIZED` (implementation pending Project Control authorization)
+  - **ADR Requirement:** No new ADR required at planning gate; ADR-003 and ADR-004 remain active.
+  - **Architecture Invariants:** `ARCHITECTURE.md` update required during implementation.
+  - **Compatibility Version:** Advancement from `"1" → "2"` is an approved Phase 5 requirement upon schema implementation; same-version restore semantics unchanged.
+  - **Release Qualification:** Previous Windows / local / source-based release remains independently qualified (`READY WITH DOCUMENTED NON-BLOCKING ISSUES`).
 
 - **Frozen Planning Constraints:**
   - `WatchlistItem` remains the sole monitoring / scheduled-refresh authority.
@@ -213,7 +216,7 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Release Readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
 - **Supported Release Boundary:** `Windows / local / source-based`
 - **Remote Publication:** Qualified revision has not been pushed to `origin/main` (remote publication is a separate explicitly authorized action).
-- **Phase 5 Status:** `SELECTED / PLANNING REQUIRED` (research gate closed, research ready for project control, implementation not authorized, phase plan not yet approved; previous release qualification remains valid)
+- **Phase 5 Status:** `PLAN APPROVED / IMPLEMENTATION PENDING AUTHORIZATION` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), AC surface: `P5-AC-01` through `P5-AC-36`, research gate closed, implementation not yet authorized; previous release qualification remains valid)
 - **Preserved Accepted Non-Blocking Debt:**
   - Dev-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
   - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).

@@ -1,8 +1,8 @@
 # Project status
 
-Updated: 2026-10-05 18:30 UTC+7. Phase: Phase 4 — Reporting & Productization.
+Updated: 2026-10-05 18:45 UTC+7. Phase: Phase 4 — Reporting & Productization.
 
-Phase 4 status: **COMPLETE / ACCEPTED**. Project Control reviewed and accepted the Phase 4 completion report plus QA verification evidence on 2026-10-05. All Phase 4 acceptance criteria (P4-AC-01 through P4-AC-35) are validated under the authoritative [`PHASE_4_PLAN.md`](PHASE_4_PLAN.md), [`research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md`](research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md), and [`docs/architecture/ADR-004.md`](docs/architecture/ADR-004.md). Reporting delivers deterministic UTF-8 BOM CSV exports across Trends, Watchlist, bounded Product History (24h/7d/30d), and Alert History with keyset streaming and request-start high-watermark membership freeze. Hot SQLite backups via native `sqlite3.Connection.backup()` are managed under `backend/.local/backups/` with pre-publish schema, marker, integrity, and foreign key verification. Launcher-owned offline restore (`RESTORE.bat`) is governed by transaction manifest `backend/.local/restore/manifest.json`, Pre-Start Manifest Guard, validated pre-restore safety backups, atomic database replacement, and automated rollback upon health check failure. Disaster recovery (`RESTORE.bat --recover`) deterministically resolves interrupted operations. System diagnostics (`/api/diagnostics`) strictly redacts credentials and session material with explicit on-demand deep checks. Full test suites pass cleanly (**153 backend pytest**, **35 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Release readiness: **NOT READY — SOURCE-CONTROL HANDOFF FINALIZATION IN PROGRESS**. No executable has been packaged.
+Phase 4 status: **COMPLETE / ACCEPTED**. Project Control final QA decision: **READY WITH DOCUMENTED NON-BLOCKING ISSUES**. All Phase 4 acceptance criteria (P4-AC-01 through P4-AC-35) are validated under the authoritative [`PHASE_4_PLAN.md`](PHASE_4_PLAN.md), [`research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md`](research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md), and [`docs/architecture/ADR-004.md`](docs/architecture/ADR-004.md). Reporting delivers deterministic UTF-8 BOM CSV exports across Trends, Watchlist, bounded Product History (24h/7d/30d), and Alert History with keyset streaming and request-start high-watermark membership freeze. Hot SQLite backups via native `sqlite3.Connection.backup()` are managed under `backend/.local/backups/` with pre-publish schema, marker, integrity, and foreign key verification. Launcher-owned offline restore (`RESTORE.bat`) is governed by transaction manifest `backend/.local/restore/manifest.json`, Pre-Start Manifest Guard, validated pre-restore safety backups, atomic database replacement, and automated rollback upon health check failure. Disaster recovery (`RESTORE.bat --recover`) deterministically resolves interrupted operations. System diagnostics (`/api/diagnostics`) strictly redacts credentials and session material with explicit on-demand deep checks. Full test suites pass cleanly (**153 backend pytest**, **35 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Source-control handoff: **COMPLETE**. Qualified source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`. Release readiness: **READY WITH DOCUMENTED NON-BLOCKING ISSUES**. The project is qualified for its supported **Windows / local / source-based runtime**. Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`. No release blockers exist. Phase 5 status: **NOT SELECTED / NOT STARTED**. No executable has been packaged.
 
 
 ## Implemented and validated
@@ -68,23 +68,31 @@ Phase 4 status: **COMPLETE / ACCEPTED**. Project Control reviewed and accepted t
 
 ## Project Control reconciliation
 
+- **Project Control Final QA Decision:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`.
 - **Phase 1 release remediation:** `COMPLETE WITH DEFERRED ITEMS`.
 - **Phase 2 — Trend Quality & Decision Support:** `COMPLETE / ACCEPTED`.
 - **Phase 3 — Monitoring, Watchlists & Alerts:** `COMPLETE / ACCEPTED`.
 - **Phase 4 — Reporting & Productization:** `COMPLETE / ACCEPTED`.
 - **Phase 4 acceptance criteria:** `P4-AC-01 through P4-AC-35 ACCEPTED / PASS`.
 - **Architecture & ADRs:** ADR-003 and ADR-004 `ACCEPTED / ACTIVE`.
-- **Code & Runtime QA qualification:** `PASS`.
-- **Release readiness:** `NOT READY — SOURCE-CONTROL HANDOFF FINALIZATION IN PROGRESS`.
+- **Repository QA & Runtime Qualification:** `PASS`.
+- **Source-control handoff:** `COMPLETE`.
+- **Qualified source revision:** `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`.
+- **Release readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`.
+- **Supported release boundary:** `Windows / local / source-based runtime`.
+- **Release blockers:** None.
+- **Remote publication:** Qualified revision has not been pushed to `origin/main`; remote publication is a separate explicitly authorized action.
 - **Phase 5 status:** `NOT SELECTED / NOT STARTED`.
-- **Preserved project deferred items:**
-  - Automatic broad home/category discovery deferred (TikTok Security Check challenge).
-  - Real 7-day field observation deferred (post-release operational validation).
-  - Browser-initiated database transfer deferred (operator offline CLI only).
-  - Multi-version cross-schema migrations deferred (same-version restore enforced).
-  - Standalone executable packaging deferred (local Windows source-based runtime).
-- **Preserved technical debt:**
-  - Runtime `PRAGMA foreign_keys = OFF` (0) maintained for cross-phase stability.
+- **Preserved accepted non-blocking debt:**
+  - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase stability.
   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies.
   - `StarletteDeprecationWarning` during test execution (`httpx` with `starlette.testclient`).
+- **Preserved accepted deferred scope:**
+  - Broad automatic discovery / CAPTCHA bypass deferred (TikTok Security Check challenge).
+  - Real 7-day field observation deferred (post-release operational validation).
+  - Browser DB transfer deferred (operator offline CLI only).
+  - Cross-version database migrations deferred (same-version restore enforced).
+  - TikTok session portability deferred (host-bound local session isolated from backups).
+  - Standalone executable packaging deferred (local Windows source-based runtime).
+  - All other previously documented deferred items.
 

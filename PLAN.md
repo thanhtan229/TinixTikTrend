@@ -1,6 +1,6 @@
 # Production review remediation plan
 
-Updated: 2026-10-04. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md and release acceptance gates.
+Updated: 2026-10-05. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, and release qualification.
 
 ## Baseline Validation: PASS
 
@@ -109,7 +109,7 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Verified Research:** [`research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md`](research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md)
 - **ADR-004:** [`docs/architecture/ADR-004.md`](docs/architecture/ADR-004.md)
 - **Status:** **COMPLETE / ACCEPTED**
-- **Project Control Completion Decision (2026-10-05):** **COMPLETE**. All Phase 4 acceptance criteria (P4-AC-01 through P4-AC-35) verified and accepted. Code/runtime QA: **PASS**. Release readiness: **NOT READY — SOURCE-CONTROL HANDOFF FINALIZATION IN PROGRESS**. Phase 5: **NOT SELECTED / NOT STARTED**.
+- **Project Control Completion Decision (2026-10-05):** **COMPLETE**. All Phase 4 acceptance criteria (P4-AC-01 through P4-AC-35) verified and accepted. Code/runtime QA: **PASS**. Source-control handoff: **COMPLETE**. Qualified source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`. Release readiness: **READY WITH DOCUMENTED NON-BLOCKING ISSUES**. Supported release boundary: **Windows / local / source-based**. Remote publication: qualified revision has not been pushed to `origin/main`. Phase 5: **NOT SELECTED / NOT STARTED**.
   - [x] Deterministic CSV export engine with UTF-8 BOM (`\ufeff`) across Product History, Trends, Watchlist, and Alert Events.
   - [x] Product History export (`GET /api/products/{id}/export-history`): Supports exactly `24h`, `7d`, `30d`. Rejects `all` and invalid ranges with structured 400. Keyset streaming `(captured_at, id) ASC` with membership freeze (`as_of_utc`, `max_snapshot_id_at_start`, lower bound).
   - [x] Trends & Watchlist CSV export mirrors active query results (respecting filters, order, limit, offset) with zero extra per-row metadata queries.
@@ -125,5 +125,28 @@ All release acceptance criteria are now validated under the revised acceptance c
   - [x] Validation suites passing: 153 backend pytest tests (100% PASS), 35 frontend Vitest tests (100% PASS), `tsc --noEmit` clean, ESLint clean, Next.js production build clean, live healthcheck clean.
   - [x] Preserved technical debt and deferred scope recorded consistently (broad discovery deferred, real 7-day field observation deferred, browser DB transfer deferred, executable packaging deferred).
 
+---
 
+## Project Control Reconciliation & Release Qualification
 
+- **Project Control Final QA Decision (2026-10-05):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
+- **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted)
+- **QA Code & Runtime Qualification:** `PASS` (153 backend pytest tests PASS, 35 frontend Vitest tests PASS, TypeScript typecheck clean, ESLint clean, Next.js production build clean, live healthcheck PASS, SQLite integrity and foreign-key checks PASS)
+- **Source-Control Handoff:** `COMPLETE`
+- **Qualified Source Revision:** `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`
+- **Release Readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
+- **Supported Release Boundary:** `Windows / local / source-based`
+- **Remote Publication:** Qualified revision has not been pushed to `origin/main` (remote publication is a separate explicitly authorized action).
+- **Phase 5 Status:** `NOT SELECTED / NOT STARTED`
+- **Preserved Accepted Non-Blocking Debt:**
+  - Dev-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
+  - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).
+  - Runtime `PRAGMA foreign_keys = 0` (`OFF`) preserved for cross-phase operational stability.
+- **Preserved Accepted Deferred Scope:**
+  - Broad automatic discovery / CAPTCHA bypass deferred (TikTok Security Check challenge; user-assisted PDP tracking is primary workflow).
+  - Real 7-day field observation deferred (post-release operational validation; 7d analytics behavior proven via deterministic test fixtures).
+  - Browser DB transfer deferred (operator offline launcher CLI `BACKUP.bat` / `RESTORE.bat` only).
+  - Cross-version database migrations deferred (same-version restore enforced via compatibility marker "1").
+  - TikTok session portability deferred (host-bound local session isolated from backups/exports).
+  - Executable/installer packaging deferred (supported boundary is local Windows source-based runtime).
+  - All other previously documented deferred items.

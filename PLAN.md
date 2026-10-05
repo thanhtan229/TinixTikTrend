@@ -1,6 +1,6 @@
 # Production review remediation plan
 
-Updated: 2026-10-05. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, and release qualification.
+Updated: 2026-10-05. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, release qualification, and Phase 5 selection.
 
 ## Baseline Validation: PASS
 
@@ -127,6 +127,82 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 ---
 
+## Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare: SELECTED / PLANNING REQUIRED
+
+- **Decision State:**
+  - **Phase 5 Status:** `SELECTED / PLANNING REQUIRED`
+  - **Phase Name:** `Opportunity Workspace — Collections, Saved Views & Product Compare`
+  - **Research Gate:** `CLOSED`
+  - **Research Recommendation:** `RECOMMEND AS NEXT PRODUCT PHASE`
+  - **Research Readiness:** `RESEARCH READY FOR PROJECT CONTROL`
+  - **Implementation:** `NOT AUTHORIZED`
+  - **Phase Plan:** `NOT YET APPROVED`
+
+- **Frozen Planning Constraints:**
+  - `WatchlistItem` remains the sole monitoring / scheduled-refresh authority.
+  - Collections are independent decision-organization state.
+  - Collection membership never implies watch/unwatch.
+  - Unwatch does not remove Collection membership/status/notes.
+  - `WatchlistItem.notes` remains internal provenance.
+  - User decision notes belong to `CollectionItem.notes`.
+  - Baseline domain model:
+    - `Collection`
+    - `CollectionItem`
+    - `SavedView`
+    - transient read-only Compare
+  - CollectionItem status vocabulary:
+    `new | reviewing | candidate | rejected`
+  - Product may belong to multiple Collections.
+  - Tags deferred.
+  - Compare accepts exactly 2–5 products.
+  - Compare reuses authoritative Phase 2 analytics.
+  - No new comparison score.
+  - No per-product frontend API fanout.
+  - Saved Views use typed/versioned payloads.
+  - Saved Views apply to existing component-local React state.
+  - No URL-state synchronization scope.
+  - Pagination offset/skip is never persisted.
+  - Minimum additive schema:
+    - `collections`
+    - `collection_items`
+    - `saved_views`
+  - Current `Base.metadata.create_all()` architecture remains the additive-table bootstrap.
+  - No migration framework is introduced solely for Phase 5.
+  - Portable backup compatibility version must advance:
+    `"1" → "2"`
+    when the Phase 5 schema is implemented.
+  - ADR-004 same-version restore semantics remain unchanged.
+  - Cross-version migration remains deferred.
+  - `ARCHITECTURE.md` update will be required during Phase 5.
+  - No new ADR is currently required.
+
+- **Planning Performance Constraints:**
+  - Collection membership list: `<= 2` SQL queries;
+  - Compare 2–5 products: `<= 3` SQL queries total;
+  - Saved View application: zero additional DB query beyond the underlying Trends/Watchlist request;
+  - Zero N+1.
+
+- **Explicit Phase 5 Out-of-Scope:**
+  - Tags/labels;
+  - Custom workflow/status builder;
+  - Kanban/tasks/due dates/assignees;
+  - Persisted comparison sessions;
+  - Compare charts in baseline;
+  - AI recommendations/summaries;
+  - New Trend Score formulas;
+  - New alert-rule types;
+  - Crawler/discovery changes;
+  - CAPTCHA/anti-bot bypass;
+  - Affiliate profitability;
+  - Browser/cloud sync;
+  - Multi-user/cloud backend;
+  - Executable packaging;
+  - Arbitrary report builder;
+  - Cross-version restore migration;
+  - URL deep-link/filter synchronization project.
+
+---
+
 ## Project Control Reconciliation & Release Qualification
 
 - **Project Control Final QA Decision (2026-10-05):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
@@ -137,7 +213,7 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Release Readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
 - **Supported Release Boundary:** `Windows / local / source-based`
 - **Remote Publication:** Qualified revision has not been pushed to `origin/main` (remote publication is a separate explicitly authorized action).
-- **Phase 5 Status:** `NOT SELECTED / NOT STARTED`
+- **Phase 5 Status:** `SELECTED / PLANNING REQUIRED` (research gate closed, research ready for project control, implementation not authorized, phase plan not yet approved; previous release qualification remains valid)
 - **Preserved Accepted Non-Blocking Debt:**
   - Dev-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
   - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).

@@ -1,8 +1,8 @@
 # Project status
 
-Updated: 2026-10-05 18:45 UTC+7. Phase: Phase 4 — Reporting & Productization.
+Updated: 2026-10-05 20:45 UTC+7. Phase: Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare (SELECTED / PLANNING REQUIRED).
 
-Phase 4 status: **COMPLETE / ACCEPTED**. Project Control final QA decision: **READY WITH DOCUMENTED NON-BLOCKING ISSUES**. All Phase 4 acceptance criteria (P4-AC-01 through P4-AC-35) are validated under the authoritative [`PHASE_4_PLAN.md`](PHASE_4_PLAN.md), [`research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md`](research/PHASE_4_REPORTING_PRODUCTIZATION_RESEARCH.md), and [`docs/architecture/ADR-004.md`](docs/architecture/ADR-004.md). Reporting delivers deterministic UTF-8 BOM CSV exports across Trends, Watchlist, bounded Product History (24h/7d/30d), and Alert History with keyset streaming and request-start high-watermark membership freeze. Hot SQLite backups via native `sqlite3.Connection.backup()` are managed under `backend/.local/backups/` with pre-publish schema, marker, integrity, and foreign key verification. Launcher-owned offline restore (`RESTORE.bat`) is governed by transaction manifest `backend/.local/restore/manifest.json`, Pre-Start Manifest Guard, validated pre-restore safety backups, atomic database replacement, and automated rollback upon health check failure. Disaster recovery (`RESTORE.bat --recover`) deterministically resolves interrupted operations. System diagnostics (`/api/diagnostics`) strictly redacts credentials and session material with explicit on-demand deep checks. Full test suites pass cleanly (**153 backend pytest**, **35 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Source-control handoff: **COMPLETE**. Qualified source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`. Release readiness: **READY WITH DOCUMENTED NON-BLOCKING ISSUES**. The project is qualified for its supported **Windows / local / source-based runtime**. Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`. No release blockers exist. Phase 5 status: **NOT SELECTED / NOT STARTED**. No executable has been packaged.
+Previous release remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the supported **Windows / local / source-based runtime** (qualified source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`). Phase 4 status remains **COMPLETE / ACCEPTED** with all acceptance criteria (P4-AC-01 through P4-AC-35) verified. Project Control has selected the next development phase: **Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare**. Current Phase 5 status: **SELECTED / PLANNING REQUIRED**; research gate is **CLOSED** (research recommendation: `RECOMMEND AS NEXT PRODUCT PHASE`, research readiness: `RESEARCH READY FOR PROJECT CONTROL`); implementation is **NOT AUTHORIZED**; and no Phase 5 implementation plan has yet been approved. Selecting Phase 5 does not invalidate the previously qualified release. Reporting delivers deterministic UTF-8 BOM CSV exports across Trends, Watchlist, bounded Product History (24h/7d/30d), and Alert History with keyset streaming and request-start high-watermark membership freeze. Hot SQLite backups via native `sqlite3.Connection.backup()` are managed under `backend/.local/backups/` with pre-publish schema, marker, integrity, and foreign key verification. Launcher-owned offline restore (`RESTORE.bat`) is governed by transaction manifest `backend/.local/restore/manifest.json`, Pre-Start Manifest Guard, validated pre-restore safety backups, atomic database replacement, and automated rollback upon health check failure. Disaster recovery (`RESTORE.bat --recover`) deterministically resolves interrupted operations. System diagnostics (`/api/diagnostics`) strictly redacts credentials and session material with explicit on-demand deep checks. Full test suites pass cleanly (**153 backend pytest**, **35 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Source-control handoff: **COMPLETE**. Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`. No release blockers exist. No executable has been packaged.
 
 
 ## Implemented and validated
@@ -65,10 +65,11 @@ Phase 4 status: **COMPLETE / ACCEPTED**. Project Control final QA decision: **RE
   - Minimal frontend CSV export actions and System Diagnostics modal.
   - Runtime connection `PRAGMA foreign_keys = OFF` preserved for cross-phase stability.
   - Sub-200ms latency regression gate verified on 200-product/5,000-snapshot synthetic dataset (Trends ~117ms, Watchlist ~66ms; 1 query each).
+- **Phase 5 — Opportunity Workspace:** SELECTED / PLANNING REQUIRED (research gate closed, implementation not authorized, phase plan not yet approved).
 
 ## Project Control reconciliation
 
-- **Project Control Final QA Decision:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`.
+- **Project Control Final QA Decision:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (previous release qualification remains fully valid).
 - **Phase 1 release remediation:** `COMPLETE WITH DEFERRED ITEMS`.
 - **Phase 2 — Trend Quality & Decision Support:** `COMPLETE / ACCEPTED`.
 - **Phase 3 — Monitoring, Watchlists & Alerts:** `COMPLETE / ACCEPTED`.
@@ -78,11 +79,11 @@ Phase 4 status: **COMPLETE / ACCEPTED**. Project Control final QA decision: **RE
 - **Repository QA & Runtime Qualification:** `PASS`.
 - **Source-control handoff:** `COMPLETE`.
 - **Qualified source revision:** `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`.
-- **Release readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`.
+- **Release readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` for the Windows / local / source-based release.
 - **Supported release boundary:** `Windows / local / source-based runtime`.
 - **Release blockers:** None.
 - **Remote publication:** Qualified revision has not been pushed to `origin/main`; remote publication is a separate explicitly authorized action.
-- **Phase 5 status:** `NOT SELECTED / NOT STARTED`.
+- **Phase 5 status:** `SELECTED / PLANNING REQUIRED` (research gate closed, research recommendation: `RECOMMEND AS NEXT PRODUCT PHASE`, research readiness: `RESEARCH READY FOR PROJECT CONTROL`, implementation not authorized, phase plan not yet approved).
 - **Preserved accepted non-blocking debt:**
   - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase stability.
   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies.

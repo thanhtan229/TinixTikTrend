@@ -19,8 +19,10 @@ import {
   Info,
   CheckCircle2,
   Bell,
+  FolderPlus,
 } from "lucide-react";
 import { ProductHistory } from "@/components/ProductHistory";
+import { AddToCollectionModal } from "@/components/AddToCollectionModal";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -30,6 +32,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [isWatched, setIsWatched] = useState<boolean>(false);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState<boolean>(false);
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -111,6 +114,16 @@ export default function ProductDetailPage() {
           >
             <Bell className="h-3.5 w-3.5 text-rose-400" />
             <span>Cảnh báo</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCollectionModalOpen(true)}
+            aria-label="Thêm vào Bộ sưu tập"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 hover:border-slate-600 transition-colors"
+          >
+            <FolderPlus className="h-3.5 w-3.5 text-rose-400" />
+            <span>Thêm vào BST</span>
           </button>
 
           {product.url && (
@@ -345,6 +358,13 @@ export default function ProductDetailPage() {
         productTitle={product.title}
         isOpen={isAlertModalOpen}
         onClose={() => setIsAlertModalOpen(false)}
+      />
+
+      <AddToCollectionModal
+        productId={product.id}
+        productTitle={product.title}
+        isOpen={isCollectionModalOpen}
+        onClose={() => setIsCollectionModalOpen(false)}
       />
     </div>
   );

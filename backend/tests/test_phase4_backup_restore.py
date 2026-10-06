@@ -50,7 +50,7 @@ def temp_env(tmp_path):
 
     # Seed compatibility marker
     with sessionmaker(bind=engine)() as session:
-        session.add(SystemMetadata(key="portable_backup_compatibility_version", value="1"))
+        session.add(SystemMetadata(key="portable_backup_compatibility_version", value=BackupService.COMPATIBILITY_VERSION))
         session.commit()
 
     return SimpleNamespace(
@@ -62,7 +62,7 @@ def temp_env(tmp_path):
 
 
 def test_p4_ac_11_system_compatibility_marker(tmp_path, monkeypatch):
-    """P4-AC-11: System compatibility marker ('portable_backup_compatibility_version' = '1') seeded in system_metadata."""
+    """P4-AC-11: System compatibility marker seeded in system_metadata."""
     db_path = tmp_path / "init_test.db"
     test_engine = create_engine(f"sqlite:///{db_path}")
     TestSession = sessionmaker(bind=test_engine)
@@ -75,7 +75,7 @@ def test_p4_ac_11_system_compatibility_marker(tmp_path, monkeypatch):
     with TestSession() as session:
         meta = session.query(SystemMetadata).filter_by(key="portable_backup_compatibility_version").first()
         assert meta is not None
-        assert meta.value == "1"
+        assert meta.value == BackupService.COMPATIBILITY_VERSION
 
 
 def test_p4_ac_12_operator_managed_online_backup(temp_env, monkeypatch):
@@ -146,7 +146,7 @@ def test_p4_ac_13_pre_publish_validation_matrix(temp_env):
     fk_engine = create_engine(f"sqlite:///{fk_fail_db}")
     Base.metadata.create_all(bind=fk_engine)
     with sessionmaker(bind=fk_engine)() as session:
-        session.add(SystemMetadata(key="portable_backup_compatibility_version", value="1"))
+        session.add(SystemMetadata(key="portable_backup_compatibility_version", value=BackupService.COMPATIBILITY_VERSION))
         # Add ProductSnapshot referencing nonexistent product_id 999
         session.add(ProductSnapshot(
             id=1,
@@ -292,7 +292,7 @@ def test_p4_ac_16_portable_backup_preserves_state_and_excludes_session_artifacts
 
         # Check compatibility marker
         compat = b_session.query(SystemMetadata).filter_by(key="portable_backup_compatibility_version").first()
-        assert compat is not None and compat.value == "1"
+        assert compat is not None and compat.value == BackupService.COMPATIBILITY_VERSION
 
     backup_engine.dispose()
 
@@ -400,7 +400,7 @@ def test_p4_ac_20_live_database_replacement_is_atomic_with_no_open_handles(temp_
     cand_engine = create_engine(f"sqlite:///{candidate_db}")
     Base.metadata.create_all(bind=cand_engine)
     with sessionmaker(bind=cand_engine)() as session:
-        session.add(SystemMetadata(key="portable_backup_compatibility_version", value="1"))
+        session.add(SystemMetadata(key="portable_backup_compatibility_version", value=BackupService.COMPATIBILITY_VERSION))
         session.add(SystemMetadata(key="candidate_marker", value="swapped_successfully"))
         session.commit()
 
@@ -448,7 +448,7 @@ def test_p4_ac_22_post_replacement_failure_causes_automatic_rollback(temp_env):
     cand_engine = create_engine(f"sqlite:///{candidate_db}")
     Base.metadata.create_all(bind=cand_engine)
     with sessionmaker(bind=cand_engine)() as session:
-        session.add(SystemMetadata(key="portable_backup_compatibility_version", value="1"))
+        session.add(SystemMetadata(key="portable_backup_compatibility_version", value=BackupService.COMPATIBILITY_VERSION))
         session.add(SystemMetadata(key="candidate_marker", value="swapped_for_fail_test"))
         session.commit()
 

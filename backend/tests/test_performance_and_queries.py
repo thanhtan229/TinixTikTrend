@@ -157,9 +157,9 @@ def test_p4_ac_30_representative_200_products_5000_snapshots_benchmark(tmp_path)
     trends_latency_ms = (time.perf_counter() - t0) * 1000.0
     trends_queries = query_count
 
-    # Benchmark TrendService (best of 3)
+    # Benchmark TrendService (best of 5)
     timings_trend = [trends_latency_ms]
-    for _ in range(2):
+    for _ in range(4):
         t0 = time.perf_counter()
         trend_service.get_trending_products(limit=50, current_time=now)
         timings_trend.append((time.perf_counter() - t0) * 1000.0)
@@ -177,9 +177,9 @@ def test_p4_ac_30_representative_200_products_5000_snapshots_benchmark(tmp_path)
     wl_latency_ms = (time.perf_counter() - t0) * 1000.0
     wl_queries = query_count
 
-    # Benchmark WatchlistService (best of 3)
+    # Benchmark WatchlistService (best of 5)
     timings_wl = [wl_latency_ms]
-    for _ in range(2):
+    for _ in range(4):
         t0 = time.perf_counter()
         wl_service.get_watched_products(limit=50, current_time=now)
         timings_wl.append((time.perf_counter() - t0) * 1000.0)

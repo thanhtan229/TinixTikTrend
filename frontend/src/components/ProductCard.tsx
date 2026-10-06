@@ -7,16 +7,25 @@ import { formatCurrency, formatNumber, formatSignedNumber, formatDate } from "@/
 import { ScoreBadge } from "./ScoreBadge";
 import { EvidenceBadge } from "./EvidenceBadge";
 import { WatchButton } from "./WatchButton";
-import { TrendingUp, ShoppingBag, Star, Sparkles, ExternalLink, ArrowUpRight } from "lucide-react";
+import { TrendingUp, ShoppingBag, Star, Sparkles, ExternalLink, ArrowUpRight, FolderPlus, Scale } from "lucide-react";
 
 interface ProductCardProps {
   product: TrendMetrics;
   rank?: number;
   isWatched?: boolean;
   onToggleWatch?: (productId: number, watched: boolean) => void;
+  onAddToCollection?: (productId: number, title: string) => void;
+  onAddToCompare?: (productId: number, title: string, imageUrl?: string | null) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, rank, isWatched = false, onToggleWatch }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  rank,
+  isWatched = false,
+  onToggleWatch,
+  onAddToCollection,
+  onAddToCompare,
+}) => {
   const deltas = product.deltas || {};
   const sold24h = deltas.sold_delta_24h;
   const sold7d = deltas.sold_delta_7d;
@@ -158,13 +167,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, rank, isWatch
           <span className="text-slate-300">{formatDate(product.first_seen_at)}</span>
         </div>
         
-        <Link
-          href={`/products/${product.product_id}`}
-          className="inline-flex items-center gap-1 text-slate-300 hover:text-white font-medium transition-colors"
-        >
-          <span>Chi tiết</span>
-          <ArrowUpRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="flex items-center gap-2">
+          {onAddToCompare && (
+            <button
+              onClick={() => onAddToCompare(product.product_id, product.title, product.image_url)}
+              title="Thêm vào khay so sánh"
+              className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-cyan-400 transition-colors"
+            >
+              <Scale className="h-3 w-3" />
+              <span>So sánh</span>
+            </button>
+          )}
+
+          {onAddToCollection && (
+            <button
+              onClick={() => onAddToCollection(product.product_id, product.title)}
+              title="Thêm vào Bộ sưu tập"
+              className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-400 transition-colors"
+            >
+              <FolderPlus className="h-3 w-3" />
+              <span>BST</span>
+            </button>
+          )}
+
+          <Link
+            href={`/products/${product.product_id}`}
+            className="inline-flex items-center gap-1 text-slate-300 hover:text-white font-medium transition-colors ml-1"
+          >
+            <span>Chi tiết</span>
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
     </div>
   );

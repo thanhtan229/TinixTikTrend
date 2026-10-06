@@ -1,8 +1,8 @@
 # Project status
 
-Updated: 2026-10-05 21:30 UTC+7. Phase: Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare (PLAN APPROVED / IMPLEMENTATION PENDING AUTHORIZATION).
+Updated: 2026-10-06 13:20 UTC+7. Phase: Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare (COMPLETE / ACCEPTED).
 
-Previous release remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the supported **Windows / local / source-based runtime** (qualified source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`). Phase 4 status remains **COMPLETE / ACCEPTED** with all acceptance criteria (P4-AC-01 through P4-AC-35) verified. Project Control has reviewed and approved the Phase 5 implementation plan: **Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare**. Current Phase 5 status: **PLAN APPROVED / IMPLEMENTATION PENDING AUTHORIZATION**; research gate is **CLOSED**; authoritative plan is [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md) with authoritative acceptance criteria **`P5-AC-01` through `P5-AC-36`**; and implementation is **NOT YET STARTED / NOT AUTHORIZED** (pending Project Control authorization). Selecting and approving the Phase 5 plan does not invalidate the previously qualified release. Reporting delivers deterministic UTF-8 BOM CSV exports across Trends, Watchlist, bounded Product History (24h/7d/30d), and Alert History with keyset streaming and request-start high-watermark membership freeze. Hot SQLite backups via native `sqlite3.Connection.backup()` are managed under `backend/.local/backups/` with pre-publish schema, marker, integrity, and foreign key verification. Launcher-owned offline restore (`RESTORE.bat`) is governed by transaction manifest `backend/.local/restore/manifest.json`, Pre-Start Manifest Guard, validated pre-restore safety backups, atomic database replacement, and automated rollback upon health check failure. Disaster recovery (`RESTORE.bat --recover`) deterministically resolves interrupted operations. System diagnostics (`/api/diagnostics`) strictly redacts credentials and session material with explicit on-demand deep checks. Full test suites pass cleanly (**153 backend pytest**, **35 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Source-control handoff: **COMPLETE**. Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`. No release blockers exist. No executable has been packaged.
+Historical release qualification remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the supported **Windows / local / source-based runtime** (qualified source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`). Phase 4 status remains **COMPLETE / ACCEPTED** with all acceptance criteria (P4-AC-01 through P4-AC-35) verified. Phase 5 status is now **COMPLETE / ACCEPTED** with all 36 authoritative acceptance criteria (**`P5-AC-01` through `P5-AC-36`**) verified and accepted under authoritative plan [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md). Phase 5 delivers Collections, Saved Views, and transient Product Compare as an additive decision-organization workspace; Watchlist remains the sole monitoring authority; portable compatibility version is advanced to `"2"` with same-version restore strictly enforced; in-place additive bootstrap preserves all Phase 1–4 data; query budgets (Zero N+1) and sub-200ms compare benchmarks are verified. Full test suites pass cleanly (**178 backend pytest**, **46 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Source changes require separate QA/release qualification if Project Control later requests a new release-ready decision. Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`. No Phase 5 blockers exist. No executable has been packaged.
 
 
 ## Implemented and validated
@@ -29,8 +29,8 @@ Previous release remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the 
 
 ## Validation and runtime
  
-- Backend: **153 pytest PASS**, 1 StarletteDeprecationWarning.
-- Frontend: **35 tests PASS** across 7 test suites in Vitest.
+- Backend: **178 pytest PASS**, 1 StarletteDeprecationWarning.
+- Frontend: **46 tests PASS** across 8 test suites in Vitest.
 - TypeScript: `npx tsc --noEmit` PASS (clean).
 - Lint: `npm run lint` (`eslint src`) PASS (clean).
 - Production build: `npm run build` (`next build`) PASS (compiled successfully, 4 static/dynamic routes generated).
@@ -48,13 +48,13 @@ Previous release remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the 
   - Keyset-streaming CSV generation with short-lived SQLite sessions and request-start high-watermark membership freeze.
   - Trends and Watchlist export mirroring active query result set without extra per-row metadata queries.
   - Persisted Alert History export in deterministic descending order.
-  - Operator hot SQLite online backup via `BACKUP.bat` to `backend/.local/backups/tinix-affiliate-v1-YYYYMMDDTHHMMSS.ffffffZ.sqlite3`.
-  - Staging pre-publish validation: SQLite header, dynamic schema derivation from SQLAlchemy `Base.metadata`, compatibility marker "1", `integrity_check`, and `foreign_key_check`.
+  - Operator hot SQLite online backup via `BACKUP.bat` to `backend/.local/backups/`.
+  - Staging pre-publish validation: SQLite header, dynamic schema derivation from SQLAlchemy `Base.metadata`, compatibility marker, `integrity_check`, and `foreign_key_check`.
   - Collision rejection preventing silent file overwrites.
   - Host-bound session security: `backend/.local/tiktok-session.json` strictly excluded from backups and exports.
   - Offline launcher-owned restore (`RESTORE.bat`) eliminating Windows file locking (`WinError 32`).
   - Pre-quiescence candidate validation before stopping services.
-  - Pre-restore safety backup (`tinix-pre-restore-v1-*.sqlite3`) created with SQLite online backup engine and validated before live replacement.
+  - Pre-restore safety backup created with SQLite online backup engine and validated before live replacement.
   - Atomic database replacement with automated rollback on startup or health check failure.
   - Transaction manifest at `backend/.local/restore/manifest.json` with terminal states `COMPLETED`, `ROLLED_BACK`, `ABORTED`.
   - Pre-Start Manifest Guard blocking normal startup if restore is incomplete.
@@ -65,35 +65,42 @@ Previous release remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the 
   - Minimal frontend CSV export actions and System Diagnostics modal.
   - Runtime connection `PRAGMA foreign_keys = OFF` preserved for cross-phase stability.
   - Sub-200ms latency regression gate verified on 200-product/5,000-snapshot synthetic dataset (Trends ~117ms, Watchlist ~66ms; 1 query each).
-- **Phase 5 — Opportunity Workspace:** PLAN APPROVED / IMPLEMENTATION PENDING AUTHORIZATION (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), 36 ACs: `P5-AC-01` through `P5-AC-36`, research complete/closed, implementation not yet authorized).
+- **Phase 5 — Opportunity Workspace:** COMPLETE / ACCEPTED across all 36 criteria (`P5-AC-01` through `P5-AC-36`):
+  - Collections domain separated from Watchlist: `WatchlistItem` remains sole monitoring/refresh authority; Collections purely for decision organization; unwatch does not remove Collection membership/notes/status.
+  - Additive database schema (`collections`, `collection_items`, `saved_views`) created via `Base.metadata.create_all()` without Alembic; dynamic schema validation derived from SQLAlchemy metadata; compatibility marker advanced `"1" → "2"`.
+  - Portable backup compatibility version `"2"`: v1 backups rejected with structured HTTP 400 under unchanged same-version restore policy; v2 backup round-trip validated; in-place additive bootstrap validated.
+  - Strictly typed V1 Saved Views: Trends (9 parameters) and Watchlist (7 parameters), applied in-memory (0 extra SQL queries), Watchlist apply resets `skip=0`.
+  - Transient read-only Compare (2–5 products): single bulk backend request path, <=3 SQL queries with collections / <=2 without, shared single `as_of_utc`, bounded 7d alert summary, reuses authoritative Phase 2 analytics (no new score), sub-200ms benchmark verified (median 5.47ms, p95 5.62ms on 200 products / 5,000 snapshots).
+  - Zero N+1 query budget verified: collection member list exactly 2 queries; compare <=3 queries; saved view apply 0 queries.
+  - Frontend Opportunity Workspace: CollectionsWorkspace, AddToCollectionModal, CompareTray, CompareModal, SavedViewControl.
+  - Operator documentation in `README.md` and architectural principles in `ARCHITECTURE.md` updated.
 
 ## Project Control reconciliation
 
-- **Project Control Final QA Decision:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (previous release qualification remains fully valid).
+- **Project Control Final QA Decision (Historical):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (previous release qualification remains valid historical baseline for `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
 - **Phase 1 release remediation:** `COMPLETE WITH DEFERRED ITEMS`.
 - **Phase 2 — Trend Quality & Decision Support:** `COMPLETE / ACCEPTED`.
 - **Phase 3 — Monitoring, Watchlists & Alerts:** `COMPLETE / ACCEPTED`.
-- **Phase 4 — Reporting & Productization:** `COMPLETE / ACCEPTED`.
-- **Phase 4 acceptance criteria:** `P4-AC-01 through P4-AC-35 ACCEPTED / PASS`.
-- **Architecture & ADRs:** ADR-003 and ADR-004 `ACCEPTED / ACTIVE`.
-- **Repository QA & Runtime Qualification:** `PASS`.
-- **Source-control handoff:** `COMPLETE`.
-- **Qualified source revision:** `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`.
-- **Release readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` for the Windows / local / source-based release.
-- **Supported release boundary:** `Windows / local / source-based runtime`.
-- **Release blockers:** None.
-- **Remote publication:** Qualified revision has not been pushed to `origin/main`; remote publication is a separate explicitly authorized action.
-- **Phase 5 status:** `PLAN APPROVED / IMPLEMENTATION PENDING AUTHORIZATION` (research complete/closed, plan approved: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36`, implementation not started / not yet authorized).
-- **Preserved accepted non-blocking debt:**
+- **Phase 4 — Reporting & Productization:** `COMPLETE / ACCEPTED` (all criteria P4-AC-01 through P4-AC-35 accepted).
+- **Phase 5 — Opportunity Workspace:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), all criteria `P5-AC-01` through `P5-AC-36` accepted).
+- **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
+- **Repository QA & Runtime Qualification:** Backend 178 pytest PASS, Frontend 46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, live healthcheck PASS, SQLite integrity and foreign-key checks PASS.
+- **Source-Control Handoff:** Complete for Phase 5.
+- **Supported Release Boundary:** `Windows / local / source-based runtime`.
+- **Release Blockers:** None.
+- **Remote Publication:** Qualified revision has not been pushed to `origin/main`; remote publication is a separate explicitly authorized action.
+- **Preserved Accepted Non-Blocking Debt & Deviations:**
   - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase stability.
   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies.
   - `StarletteDeprecationWarning` during test execution (`httpx` with `starlette.testclient`).
-- **Preserved accepted deferred scope:**
+  - Scratch-file cleanup deviation: five untracked conversational scratch `.txt` files deleted during implementation workspace cleanup; classification: unrelated cleanup deviation, zero production/runtime/test/config impact, no known release impact, no reconstruction required, no further remediation required.
+- **Preserved Accepted Deferred Scope:**
   - Broad automatic discovery / CAPTCHA bypass deferred (TikTok Security Check challenge).
   - Real 7-day field observation deferred (post-release operational validation).
   - Browser DB transfer deferred (operator offline CLI only).
-  - Cross-version database migrations deferred (same-version restore enforced).
+  - Cross-version database migrations deferred (same-version restore enforced via compatibility marker "2").
   - TikTok session portability deferred (host-bound local session isolated from backups).
   - Standalone executable packaging deferred (local Windows source-based runtime).
+  - Phase 5 deferred items (tags/labels, collection archiving, custom workflow/status builder, tasks/kanban, persisted comparison sessions/history, compare charts, AI recommendations, URL deep-link sync, Saved View default/favorite).
   - All other previously documented deferred items.
 

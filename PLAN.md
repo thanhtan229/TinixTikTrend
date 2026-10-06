@@ -127,105 +127,113 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 ---
 
-## Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare: PLAN APPROVED
+## Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare: COMPLETE / ACCEPTED
 
 - **Decision State:**
-  - **Phase 5 Status:** `PLAN APPROVED`
+  - **Phase 5 Status:** `COMPLETE / ACCEPTED`
   - **Phase Name:** `Opportunity Workspace — Collections, Saved Views & Product Compare`
   - **Research Gate:** `CLOSED` (no additional research required before implementation)
   - **Authoritative Plan:** [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md)
-  - **Authoritative Acceptance Criteria Surface:** `P5-AC-01` through `P5-AC-36` (36 authoritative criteria)
-  - **Implementation Status:** `NOT YET AUTHORIZED` (implementation pending Project Control authorization)
-  - **ADR Requirement:** No new ADR required at planning gate; ADR-003 and ADR-004 remain active.
-  - **Architecture Invariants:** `ARCHITECTURE.md` update required during implementation.
-  - **Compatibility Version:** Advancement from `"1" → "2"` is an approved Phase 5 requirement upon schema implementation; same-version restore semantics unchanged.
-  - **Release Qualification:** Previous Windows / local / source-based release remains independently qualified (`READY WITH DOCUMENTED NON-BLOCKING ISSUES`).
+  - **Authoritative Acceptance Criteria Surface:** `P5-AC-01` through `P5-AC-36` (all 36 authoritative criteria accepted and passing)
+  - **Plan Status:** `COMPLETE / ACCEPTED`
+  - **Implementation Status:** `COMPLETE / ACCEPTED`
+  - **ADR Requirement:** ADR-003 unchanged; ADR-004 semantics unchanged (`portable_backup_compatibility_version` advanced from `"1"` to `"2"`).
+  - **Architecture Invariants:** `ARCHITECTURE.md` updated and active.
+  - **Compatibility Version:** Advanced to `"2"`; same-version restore semantics strictly enforced.
+  - **Release Qualification:** Previous Windows / local / source-based release qualification remains historical evidence (`4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`); Phase 5 source changes require separate QA/release qualification if Project Control later requests a new release-ready decision.
 
-- **Frozen Planning Constraints:**
+- **Implementation Validation Evidence:**
+  - **Backend pytest:** `178 passed`, 1 StarletteDeprecationWarning (100% PASS).
+  - **Frontend Vitest:** `46 passed` across 8 test suites (100% PASS).
+  - **TypeScript:** `npx tsc --noEmit` PASS (clean).
+  - **Lint:** `npm run lint` (`eslint src`) PASS (clean).
+  - **Production build:** `npm run build` (`next build`) PASS (compiled successfully, 4 static/dynamic routes generated).
+  - **Healthcheck:** `healthcheck.bat` PASS (FastAPI :8000 status: ok, database: connected, region: VN; Next.js :3000 HTTP 200 OK).
+  - **SQLite Integrity & Foreign Keys:** `PRAGMA integrity_check` = `[('ok',)]`; `PRAGMA foreign_key_check` = `[]` clean.
+  - **No Blocker:** Zero Phase 5 blockers remain.
+
+- **Query Budgets & Performance Evidence:**
+  - **Collection member list query budget:** Exactly `2` SQL queries in accepted evidence (Zero N+1).
+  - **Compare query budget:** Exactly `3` SQL queries with collection context / `2` without collection context (Zero N+1, single bulk HTTP request).
+  - **Compare benchmark (200 products / 5,000 snapshots):**
+    - Median: `5.47ms`
+    - p95/Max: `5.62ms`
+    - Hard performance gate (`<200ms`): PASS
+    - Research performance target (`<50ms`): PASS
+  - **Saved View application:** Exactly `0` additional SavedView query/fetch path beyond the underlying table query.
+
+- **Backup & In-Place Bootstrap Compatibility:**
+  - **Portable backup compatibility version:** Advanced to `"2"`.
+  - **Same-version restore policy:** Phase-4 / version-1 portable backups rejected with structured HTTP 400 under unchanged same-version restore policy prior to quiescence.
+  - **Phase-5 / version-2 backup round-trip:** PASS (hot online backup via `BACKUP.bat`, schema verification, marker `"2"` verification, and full round-trip offline restore pass).
+  - **In-place additive bootstrap:** PASS (`Base.metadata.create_all()` additively provisions `collections`, `collection_items`, `saved_views` without Alembic, preserving Phase 1–4 tables and data).
+
+- **Frozen Architectural Boundaries:**
   - `WatchlistItem` remains the sole monitoring / scheduled-refresh authority.
-  - Collections are independent decision-organization state.
+  - Collections represent independent decision-organization state.
   - Collection membership never implies watch/unwatch.
-  - Unwatch does not remove Collection membership/status/notes.
+  - Unwatch does not remove Collection membership, review status, or decision notes.
   - `WatchlistItem.notes` remains internal provenance.
   - User decision notes belong to `CollectionItem.notes`.
-  - Baseline domain model:
-    - `Collection`
-    - `CollectionItem`
-    - `SavedView`
-    - transient read-only Compare
-  - CollectionItem status vocabulary:
-    `new | reviewing | candidate | rejected`
+  - Baseline domain model: `Collection`, `CollectionItem`, `SavedView`, and transient read-only Compare.
+  - CollectionItem status vocabulary: `new | reviewing | candidate | rejected`.
   - Product may belong to multiple Collections.
-  - Tags deferred.
-  - Compare accepts exactly 2–5 products.
-  - Compare reuses authoritative Phase 2 analytics.
-  - No new comparison score.
-  - No per-product frontend API fanout.
-  - Saved Views use typed/versioned payloads.
-  - Saved Views apply to existing component-local React state.
-  - No URL-state synchronization scope.
-  - Pagination offset/skip is never persisted.
-  - Minimum additive schema:
-    - `collections`
-    - `collection_items`
-    - `saved_views`
-  - Current `Base.metadata.create_all()` architecture remains the additive-table bootstrap.
-  - No migration framework is introduced solely for Phase 5.
-  - Portable backup compatibility version must advance:
-    `"1" → "2"`
-    when the Phase 5 schema is implemented.
-  - ADR-004 same-version restore semantics remain unchanged.
-  - Cross-version migration remains deferred.
-  - `ARCHITECTURE.md` update will be required during Phase 5.
-  - No new ADR is currently required.
+  - Compare accepts exactly 2–5 products, reuses authoritative Phase 2 analytics evaluated against a single request `as_of_utc`.
+  - No new comparison score formulas, winners, or AI summaries.
+  - Saved Views use strictly typed/versioned payloads (`trends` 9 parameters, `watchlist` 7 parameters).
+  - Saved Views apply to existing component-local React state without URL sync; Watchlist apply resets `skip` to `0`.
+  - Bounded query budgets and Zero N+1 strictly enforced.
+  - `ARCHITECTURE.md` updated with Phase 5 principles.
+  - Operator documentation in `README.md` updated with v2 backup/restore boundary and Opportunity Workspace usage.
 
-- **Planning Performance Constraints:**
-  - Collection membership list: `<= 2` SQL queries;
-  - Compare 2–5 products: `<= 3` SQL queries total;
-  - Saved View application: zero additional DB query beyond the underlying Trends/Watchlist request;
-  - Zero N+1.
+- **Preserved Accepted Non-Blocking Technical Debt & Deviations:**
+  - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
+  - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).
+  - Runtime connection `PRAGMA foreign_keys = 0` (`OFF`) preserved for cross-phase operational stability.
+  - Scratch-file cleanup deviation: five untracked conversational scratch `.txt` files were deleted during implementation workspace cleanup; classification: unrelated cleanup deviation, zero production/runtime/test/config impact, no known release impact, no reconstruction required, no further remediation required.
 
-- **Explicit Phase 5 Out-of-Scope:**
-  - Tags/labels;
-  - Custom workflow/status builder;
-  - Kanban/tasks/due dates/assignees;
-  - Persisted comparison sessions;
-  - Compare charts in baseline;
-  - AI recommendations/summaries;
-  - New Trend Score formulas;
-  - New alert-rule types;
-  - Crawler/discovery changes;
-  - CAPTCHA/anti-bot bypass;
-  - Affiliate profitability;
-  - Browser/cloud sync;
-  - Multi-user/cloud backend;
-  - Executable packaging;
-  - Arbitrary report builder;
-  - Cross-version restore migration;
-  - URL deep-link/filter synchronization project.
+- **Preserved Explicit Deferred & Out-of-Scope Items:**
+  - Tags and arbitrary product labels.
+  - Collection archive behavior.
+  - Custom workflow/status builder.
+  - Kanban/tasks/due dates/assignees.
+  - Persisted comparison sessions and comparison history.
+  - Compare charts in baseline.
+  - AI recommendations and automated summaries.
+  - New Trend Score formulas.
+  - New alert-rule types.
+  - Broad crawler/discovery expansion and CAPTCHA/anti-bot bypass.
+  - Affiliate profitability calculation.
+  - Browser/cloud sync and multi-user/cloud backend.
+  - Standalone executable packaging.
+  - Cross-version backup migration framework.
+  - URL deep-link/filter synchronization.
+  - Saved View default/favorite flags and future schema migration.
+  *(These explicit deferred items do not downgrade Phase 5 from `COMPLETE / ACCEPTED`.)*
 
 ---
 
 ## Project Control Reconciliation & Release Qualification
 
-- **Project Control Final QA Decision (2026-10-05):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
-- **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted)
-- **QA Code & Runtime Qualification:** `PASS` (153 backend pytest tests PASS, 35 frontend Vitest tests PASS, TypeScript typecheck clean, ESLint clean, Next.js production build clean, live healthcheck PASS, SQLite integrity and foreign-key checks PASS)
-- **Source-Control Handoff:** `COMPLETE`
-- **Qualified Source Revision:** `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`
-- **Release Readiness:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
-- **Supported Release Boundary:** `Windows / local / source-based`
-- **Remote Publication:** Qualified revision has not been pushed to `origin/main` (remote publication is a separate explicitly authorized action).
-- **Phase 5 Status:** `PLAN APPROVED / IMPLEMENTATION PENDING AUTHORIZATION` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), AC surface: `P5-AC-01` through `P5-AC-36`, research gate closed, implementation not yet authorized; previous release qualification remains valid)
+- **Project Control Final QA Decision (Historical):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (for baseline commit `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
+- **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
+- **Phase 5 Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing).
+- **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
+- **QA Code & Runtime Qualification:** Backend 178 pytest PASS, Frontend 46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean.
+- **Source-Control Handoff:** In progress for Phase 5 completion.
+- **Supported Release Boundary:** `Windows / local / source-based runtime`.
+- **Remote Publication:** Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`.
 - **Preserved Accepted Non-Blocking Debt:**
-  - Dev-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
+  - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase operational stability.
+  - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies.
   - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).
-  - Runtime `PRAGMA foreign_keys = 0` (`OFF`) preserved for cross-phase operational stability.
+  - Scratch-file cleanup deviation (five untracked `.txt` scratch files cleaned up; no code/test/config impact).
 - **Preserved Accepted Deferred Scope:**
-  - Broad automatic discovery / CAPTCHA bypass deferred (TikTok Security Check challenge; user-assisted PDP tracking is primary workflow).
-  - Real 7-day field observation deferred (post-release operational validation; 7d analytics behavior proven via deterministic test fixtures).
-  - Browser DB transfer deferred (operator offline launcher CLI `BACKUP.bat` / `RESTORE.bat` only).
-  - Cross-version database migrations deferred (same-version restore enforced via compatibility marker "1").
+  - Broad automatic discovery / CAPTCHA bypass deferred.
+  - Real 7-day field observation deferred.
+  - Browser DB transfer deferred (operator launcher CLI `BACKUP.bat` / `RESTORE.bat` only).
+  - Cross-version database migrations deferred (same-version restore enforced via compatibility marker "2").
   - TikTok session portability deferred (host-bound local session isolated from backups/exports).
-  - Executable/installer packaging deferred (supported boundary is local Windows source-based runtime).
+  - Standalone executable/installer packaging deferred (local Windows source-based runtime).
+  - Phase 5 deferred items (tags, persisted compare, compare charts, AI recommendations, URL sync, collection archiving).
   - All other previously documented deferred items.

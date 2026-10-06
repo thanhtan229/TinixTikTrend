@@ -136,23 +136,46 @@ Ba lần quan sát đã lưu thành một sản phẩm và ba snapshots, còn ng
   ```cmd
   BACKUP.bat
   ```
-- Quy trình sao lưu: Sử dụng API `sqlite3.Connection.backup()` chuẩn của Python, thực hiện sao lưu online sang tệp tạm staging, kiểm định toàn diện (SQLite Magic Header, schema bắt buộc suy xuất từ SQLAlchemy model metadata, marker phiên bản tương thích `portable_backup_compatibility_version = "1"`, `PRAGMA integrity_check`, `PRAGMA foreign_key_check`), từ chối ghi đè nếu trùng tên, và đổi tên nguyên tử vào thư mục quản lý:
+- Quy trình sao lưu: Sử dụng API `sqlite3.Connection.backup()` chuẩn của Python, thực hiện sao lưu online sang tệp tạm staging, kiểm định toàn diện (SQLite Magic Header, schema bắt buộc suy xuất từ SQLAlchemy model metadata, marker phiên bản tương thích `portable_backup_compatibility_version = "2"`, `PRAGMA integrity_check`, `PRAGMA foreign_key_check`), từ chối ghi đè nếu trùng tên, và đổi tên nguyên tử vào thư mục quản lý:
   ```
-  backend/.local/backups/tinix-affiliate-v1-YYYYMMDDTHHMMSS.ffffffZ.sqlite3
+  backend/.local/backups/tinix-affiliate-v2-YYYYMMDDTHHMMSS.ffffffZ.sqlite3
   ```
-- **Lưu ý bảo mật & phạm vi:** Thông tin phiên đăng nhập TikTok (`backend/.local/tiktok-session.json`) và cookie được cô lập hoàn toàn khỏi tệp sao lưu database. Tính năng tải bản sao lưu qua trình duyệt đã được hoãn lại (deferred) theo quyết định của Project Control để đảm bảo tính an toàn cục bộ.
+- **Lưu ý bảo mật & ranh giới tương thích phiên bản:**
+  - **Không hỗ trợ khôi phục chéo phiên bản (No Cross-Version Migration):** Bản sao lưu tạo từ Phase-4 (phiên bản `v1`) **KHÔNG** thể phục hồi trên ứng dụng Phase-5 (phiên bản `v2`). Hệ thống sẽ từ chối ngay lập tức với lỗi HTTP 400 trước khi thực hiện bất kỳ thao tác thay thế hay ghi đè nào.
+  - **Tạo bản sao lưu v2 mới:** Sau khi khởi động thành công Phase 5 và hoàn tất bootstrap dữ liệu tại chỗ, người vận hành cần chạy ngay `BACKUP.bat` để tạo bản sao lưu hợp lệ chuẩn `v2`.
+  - **Cô lập phiên đăng nhập:** Thông tin phiên đăng nhập TikTok (`backend/.local/tiktok-session.json`), cookie và bí mật máy trạm tiếp tục được cô lập hoàn toàn khỏi tệp sao lưu database.
 
 ### 3. Phục hồi Dữ liệu Ngoại tuyến (`RESTORE.bat`)
 Nhằm loại trừ triệt để lỗi khóa file của Windows (`WinError 32`), quy trình phục hồi diễn ra ngoại tuyến khi các dịch vụ đã dừng:
-- **Phục hồi từ bản sao lưu quản lý:**
+- **Phục hồi từ bản sao lưu quản lý (yêu cầu bản sao lưu v2 hợp lệ):**
   ```cmd
-  RESTORE.bat backend\.local\backups\tinix-affiliate-v1-YYYYMMDDTHHMMSS.ffffffZ.sqlite3
+  RESTORE.bat backend\.local\backups\tinix-affiliate-v2-YYYYMMDDTHHMMSS.ffffffZ.sqlite3
   ```
-  Quy trình tự động: Kiểm định tập tin ứng viên trước khi dừng dịch vụ $\to$ Khởi tạo manifest giao dịch tại `backend/.local/restore/manifest.json` $\to$ Dừng sạch dịch vụ (giải phóng cổng 8000 và 3000) $\to$ Tạo bản sao lưu an toàn trước phục hồi bằng SQLite backup engine (`tinix-pre-restore-v1-YYYYMMDDTHHMMSS.ffffffZ.sqlite3`) kèm kiểm định toàn vẹn không ghi đè $\to$ Thay thế nguyên tử cơ sở dữ liệu `affiliate.db` $\to$ Khởi động lại dịch vụ $\to$ Chạy migration/reconciliation & catch-up cảnh báo $\to$ Kiểm tra sức khỏe hệ thống (Health Check) $\to$ Tự động rollback nếu khởi động hoặc kiểm tra sức khỏe thất bại.
+  Quy trình tự động: Kiểm định tập tin ứng viên trước khi dừng dịch vụ $\to$ Khởi tạo manifest giao dịch tại `backend/.local/restore/manifest.json` $\to$ Dừng sạch dịch vụ (giải phóng cổng 8000 và 3000) $\to$ Tạo bản sao lưu an toàn trước phục hồi bằng SQLite backup engine (`tinix-pre-restore-v2-YYYYMMDDTHHMMSS.ffffffZ.sqlite3`) kèm kiểm định toàn vẹn không ghi đè $\to$ Thay thế nguyên tử cơ sở dữ liệu `affiliate.db` $\to$ Khởi động lại dịch vụ $\to$ Chạy migration/reconciliation & catch-up cảnh báo $\to$ Kiểm tra sức khỏe hệ thống (Health Check) $\to$ Tự động rollback nếu khởi động hoặc kiểm tra sức khỏe thất bại.
 - **Khắc phục sự cố gián đoạn (Crash Recovery):**
   ```cmd
   RESTORE.bat --recover
   ```
   Nếu có sự cố mất điện hoặc tiến trình bị tắt đột ngột khi đang phục hồi, cờ `--recover` sẽ phân tích manifest giao dịch: nếu gián đoạn trước khi thay thế file DB sẽ hủy về `ABORTED` an toàn; nếu gián đoạn tại/sau khi thay thế file DB sẽ hoàn tất hoặc tự động rollback về bản safety backup đã được kiểm định hợp lệ (`ROLLED_BACK`), giải phóng bộ bảo vệ Pre-Start Manifest Guard.
+
+---
+
+## 🎯 Không gian Cơ hội: Bộ sưu tập, Chế độ xem & So sánh (Phase 5)
+
+### 1. Bộ sưu tập Cơ hội (Collections Workspace)
+- **Tách biệt Giám sát & Đánh giá Cơ hội:** `Watchlist` dành riêng cho việc quét định kỳ tự động của hệ thống; `Collections` dành cho việc tổ chức, ghi chú và phân loại các sản phẩm tiềm năng phục vụ quyết định kinh doanh của người dùng.
+- **Thao tác độc lập:** Thêm sản phẩm vào Bộ sưu tập **không** tự động đưa vào Watchlist. Hủy theo dõi (Unwatch) **không** xóa sản phẩm khỏi Bộ sưu tập và **không** làm mất ghi chú thẩm định.
+- **Trạng thái & Ghi chú thẩm định:** Hỗ trợ 4 trạng thái linh hoạt (`Mới (new)`, `Đang xem xét (reviewing)`, `Ứng viên (candidate)`, `Đã loại (rejected)`) và ghi chú thẩm định lưu trực tiếp với nút bấm lưu tường minh.
+- **Thêm nhanh đa điểm:** Thêm sản phẩm vào Bộ sưu tập dễ dàng từ bảng Xu hướng (Trends), danh sách Theo dõi (Watchlist) hoặc Trang chi tiết sản phẩm (PDP).
+
+### 2. Chế độ xem đã lưu (Saved Views)
+- **Lưu cấu hình lọc & sắp xếp:** Hỗ trợ lưu lại bộ lọc tìm kiếm thường dùng trên tab Xu hướng (9 tham số) và Watchlist (7 tham số).
+- **Áp dụng tức thì trong bộ nhớ:** Áp dụng chế độ xem trực tiếp qua bộ nhớ giao diện, không phát sinh thêm truy vấn cơ sở dữ liệu và tự động reset trang về 0 trên Watchlist.
+
+### 3. So sánh Sản phẩm Đa chiều (Product Compare)
+- **Khay so sánh tức thời (Transient Tray):** Chọn từ 2 đến 5 sản phẩm để so sánh trực diện trên cùng một bảng tổng hợp. Dữ liệu khay so sánh chỉ tồn tại trong phiên duyệt hiện tại, không lưu rác vào cơ sở dữ liệu hay URL.
+- **Đồng bộ thời điểm UTC (`as_of_utc`):** Toàn bộ số liệu của các sản phẩm so sánh được tính toán tại cùng một mốc thời gian UTC duy nhất, đảm bảo tính công bằng và chính xác của chỉ số.
+- **Bảo toàn bằng chứng & Tóm tắt cảnh báo 7 ngày:** Hiển thị rõ độ tin cậy bằng chứng, lý do tăng trưởng, giá trị thiếu (`null`) và thống kê cảnh báo phát sinh trong 7 ngày gần nhất mà không làm sai lệch số liệu phân tích.
+
 
 

@@ -15,6 +15,9 @@ from app.api.crawler import router as crawler_router
 from app.api.watchlist import router as watchlist_router
 from app.api.alerts import router as alerts_router
 from app.api.diagnostics import router as diagnostics_router
+from app.api.collections import router as collections_router
+from app.api.saved_views import router as saved_views_router
+from app.api.compare import router as compare_router
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.services.alert_service import AlertService
@@ -80,6 +83,9 @@ app.include_router(crawler_router, prefix="/api")
 app.include_router(watchlist_router, prefix="/api")
 app.include_router(alerts_router, prefix="/api")
 app.include_router(diagnostics_router, prefix="/api")
+app.include_router(collections_router, prefix="/api")
+app.include_router(saved_views_router, prefix="/api")
+app.include_router(compare_router, prefix="/api")
 
 
 @app.get("/")

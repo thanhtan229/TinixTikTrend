@@ -66,3 +66,37 @@ API crawler/status chỉ trả local_session_status = missing/available/invalid;
 5. **Thực thi Khóa Ngoại là Nợ Kỹ thuật Không Chặn (Non-Blocking FK Technical Debt):** Kết nối runtime ứng dụng tiếp tục giữ nguyên mặc định SQLite (`PRAGMA foreign_keys = 0`) để tránh rủi ro hồi quy ngoài phạm vi Phase 4. Mọi quy trình kiểm định sao lưu, ứng viên phục hồi và chẩn đoán chuyên sâu đều bắt buộc thực thi `PRAGMA foreign_key_check`.
 6. **Chẩn đoán Hệ thống Cục bộ An toàn (Safe Local System Diagnostics):** Cung cấp API `/api/diagnostics` trả về dung lượng cơ sở dữ liệu, số lượng dòng các bảng, trạng thái scheduler, và trạng thái phiên TikTok dạng enum (`available` / `missing` / `invalid`). Tuyệt đối che giấu, không lộ cookie, token, header xác thực hay danh sách file tùy ý. Kiểm tra toàn vẹn chuyên sâu (`/api/diagnostics/deep`) chỉ chạy khi người dùng chủ động kích hoạt.
 
+## Không gian Cơ hội: Bộ sưu tập, Chế độ xem đã lưu & So sánh Sản phẩm (Phase 5 - 06/10/2026)
+
+1. **Phân tách Tuyệt đối giữa Giám sát và Tổ chức Quyết định (`Watchlist` vs `Collections`):**
+   - `WatchlistItem` tiếp tục giữ vai trò duy nhất quản lý việc quét định kỳ (scheduled refresh).
+   - `Collections` và `CollectionItems` thuần túy phục vụ tổ chức và đánh giá cơ hội kinh doanh (decision organization).
+   - Thêm sản phẩm vào Bộ sưu tập tuyệt đối không tự động kích hoạt theo dõi (Watch) hay tạo `WatchlistItem`.
+   - Hủy theo dõi (Unwatch) một sản phẩm tuyệt đối không ảnh hưởng, không xóa sản phẩm khỏi Bộ sưu tập, và không làm mất trạng thái hay ghi chú quyết định (`CollectionItem.status`, `CollectionItem.notes`).
+   - `WatchlistItem.notes` tiếp tục là trường nội bộ phục vụ nguồn gốc theo dõi; ghi chú quyết định của người dùng chỉ lưu tại `CollectionItem.notes`.
+   - Các thao tác trên Bộ sưu tập không gây ra bất kỳ tác dụng phụ nào tới crawler, scheduler hay tập luật cảnh báo.
+2. **Khởi tạo Schema Tăng cường & Kiểm định Động (Additive Bootstrap & Dynamic Required Schema Validation):**
+   - Không áp dụng Alembic cho Phase 5. Khởi tạo schema additive bằng `Base.metadata.create_all()`, tạo chính xác 3 bảng mới: `collections`, `collection_items`, `saved_views`.
+   - Ràng buộc thành viên bắt buộc: `UNIQUE(collection_id, product_id)` và chỉ mục đảo `collection_items(product_id)`.
+   - Kiểm định schema động suy xuất từ chính model metadata của SQLAlchemy (`inspect(db.connection())`) trước khi nâng cấp giá trị marker khả chuyển `portable_backup_compatibility_version` từ `"1"` lên `"2"` trong `system_metadata`.
+   - Ứng dụng chỉ sẵn sàng (application ready) sau khi toàn bộ schema bắt buộc và marker `"2"` được xác nhận hợp lệ.
+3. **Chế độ xem đã lưu Kiểu tĩnh V1 (Strictly Typed V1 Saved Views):**
+   - Phân định phạm vi rõ ràng: `trends` (đúng 9 tham số: `category`, `trend_state`, `measured_only`, `confidence`, `sort_by`, `sort_direction`, `limit`, `search`, `min_score`) và `watchlist` (đúng 7 tham số: `category`, `trend_state`, `measured_only`, `confidence`, `sort_by`, `sort_direction`, `limit`).
+   - Không hỗ trợ đồng bộ trạng thái qua query params trên URL; quản lý hoàn toàn qua component-local state.
+   - Khi áp dụng một chế độ xem đã lưu vào Watchlist, tham số `skip` luôn được reset về `0`.
+   - Việc áp dụng một chế độ xem đã nạp trong bộ nhớ tạo ra đúng `0` câu lệnh SQL truy vấn `SavedView` phụ trợ.
+4. **So sánh Sản phẩm Phi trạng thái & Gộp Truy vấn (Stateless Single-Request Product Compare):**
+   - Khay so sánh lưu trữ tạm thời trong bộ nhớ frontend (transient memory); tuyệt đối không lưu vào Database, `localStorage`, hay URL search params.
+   - Cho phép so sánh từ 2 đến tối đa 5 sản phẩm; giữ nguyên thứ tự yêu cầu; từ chối so sánh nếu có sản phẩm cách ly hoặc không tồn tại.
+   - Ghi nhận duy nhất một mốc thời gian UTC có múi giờ (`as_of_utc`) tại thời điểm bắt đầu xử lý request và dùng chung mốc này cho toàn bộ sản phẩm so sánh (`current_time = as_of_utc`).
+   - Tóm tắt cảnh báo 7 ngày thực hiện gộp trong 1 câu truy vấn với cửa sổ chặt chẽ: `as_of_utc - 7 days <= created_at <= as_of_utc`.
+   - Không sáng tạo điểm số so sánh tổng hợp, không xếp hạng "người chiến thắng", không đưa ra khuyến nghị tự động. Bảo toàn tuyệt đối ngữ nghĩa bằng chứng và giá trị `null`.
+5. **Ngân sách Truy vấn Hiệu năng Chặt chẽ (Strict Query Budgets):**
+   - Lấy danh sách thành viên Bộ sưu tập: tối đa `<= 2` câu lệnh SQL (Zero N+1).
+   - So sánh 2–5 sản phẩm: tối đa `<= 3` câu lệnh SQL (Zero N+1) trên duy nhất 1 HTTP request. Thời gian phản hồi thực tế đạt dưới 10ms (vượt xa ngưỡng cứng `< 200ms` và mục tiêu nghiên cứu `< 50ms`).
+6. **Ranh giới Phiên bản Sao lưu Khả chuyển "2" (ADR-004 Evolution):**
+   - Nâng cấp marker khả chuyển lên `"2"`. Giữ nguyên nguyên tắc kiểm định nghiêm ngặt cùng phiên bản: ứng dụng Phase 5 từ chối phục hồi các bản sao lưu phiên bản 1 (HTTP 400) trước khi thực hiện bất kỳ thao tác xóa/ghi đè nào.
+   - Sao lưu phiên bản 2 bảo toàn toàn bộ dữ liệu Phase 1–5 (`collections`, `collection_items`, `saved_views` cùng toàn bộ bảng cũ).
+   - Phiên đăng nhập TikTok tiếp tục được loại trừ hoàn toàn khỏi tệp sao lưu.
+
+

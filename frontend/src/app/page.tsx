@@ -10,9 +10,14 @@ import {
   getExportTrendsUrl,
   getExportWatchlistUrl,
 } from "@/lib/api";
-import { TrendMetrics } from "@/types";
+import { TrendMetrics, TrendsSavedViewPayload, WatchlistSavedViewPayload } from "@/types";
 import { ProductCard } from "@/components/ProductCard";
 import { CrawlerControl } from "@/components/CrawlerControl";
+import { SavedViewControl } from "@/components/SavedViewControl";
+import { CollectionsWorkspace } from "@/components/CollectionsWorkspace";
+import { CompareTray, StagedProduct } from "@/components/CompareTray";
+import { CompareModal } from "@/components/CompareModal";
+import { AddToCollectionModal } from "@/components/AddToCollectionModal";
 import {
   Flame,
   TrendingUp,
@@ -22,9 +27,10 @@ import {
   Search,
   RefreshCw,
   Download,
+  Folder,
 } from "lucide-react";
 
-type TabType = "trending" | "rising" | "new" | "best-sellers" | "watchlist";
+type TabType = "trending" | "rising" | "new" | "best-sellers" | "watchlist" | "collections";
 
 const CATEGORIES = [
   "Tất cả danh mục",
@@ -55,6 +61,70 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
 
+  // Phase 5: Transient Compare staged products
+  const [stagedCompare, setStagedCompare] = useState<StagedProduct[]>([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+
+  // Phase 5: Add to Collection modal state
+  const [collectionModalProduct, setCollectionModalProduct] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+
+  const handleAddToCompare = (productId: number, title: string, imageUrl?: string | null) => {
+    setStagedCompare((prev) => {
+      if (prev.some((p) => p.productId === productId)) return prev;
+      if (prev.length >= 5) {
+        alert("Khay so sánh hỗ trợ tối đa 5 sản phẩm. Vui lòng bỏ bớt một sản phẩm trước khi thêm.");
+        return prev;
+      }
+      return [...prev, { productId, title, imageUrl }];
+    });
+  };
+
+  const handleRemoveFromCompare = (productId: number) => {
+    setStagedCompare((prev) => prev.filter((p) => p.productId !== productId));
+  };
+
+  const handleClearCompare = () => {
+    setStagedCompare([]);
+  };
+
+  const handleAddToCollection = (productId: number, title: string) => {
+    setCollectionModalProduct({ id: productId, title });
+  };
+
+  const handleApplyTrendsView = (payload: TrendsSavedViewPayload) => {
+    setCategory(payload.category ?? "Tất cả danh mục");
+    setTrendState(payload.trend_state);
+    if (payload.measured_only) {
+      setEvidenceFilter("measured_only");
+    } else if (payload.confidence) {
+      setEvidenceFilter(payload.confidence);
+    } else {
+      setEvidenceFilter("all");
+    }
+    setSortBy(payload.sort_by);
+    setSortOrder(payload.sort_direction);
+    setSearchQuery(payload.search ?? "");
+    setMinScore(payload.min_score ?? 0);
+  };
+
+  const handleApplyWatchlistView = (payload: WatchlistSavedViewPayload) => {
+    setCategory(payload.category ?? "Tất cả danh mục");
+    setTrendState(payload.trend_state);
+    if (payload.measured_only) {
+      setEvidenceFilter("measured_only");
+    } else if (payload.confidence) {
+      setEvidenceFilter(payload.confidence);
+    } else {
+      setEvidenceFilter("all");
+    }
+    setSortBy(payload.sort_by);
+    setSortOrder(payload.sort_direction);
+    // Applying Watchlist saved view always resets pagination skip=0
+  };
+
   const loadData = useCallback(async () => {
     const id = ++requestId.current;
     setLoading(true);
@@ -66,7 +136,9 @@ export default function DashboardPage() {
       const watchedIdsPromise = fetchWatchedProductIds().catch(() => []);
 
       let listPromise: Promise<TrendMetrics[]>;
-      if (activeTab === "watchlist") {
+      if (activeTab === "collections") {
+        listPromise = Promise.resolve([]);
+      } else if (activeTab === "watchlist") {
         listPromise = fetchWatchlist({
           category: catParam,
           trend_state: trendState,
@@ -290,6 +362,18 @@ export default function DashboardPage() {
             <Star className={`h-3.5 w-3.5 ${activeTab === "watchlist" ? "fill-slate-950" : ""}`} />
             <span>⭐ Watchlist ({watchedProductIds.size})</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("collections")}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              activeTab === "collections"
+                ? "bg-purple-600 text-white font-bold shadow-sm"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Folder className="h-3.5 w-3.5" />
+            <span>📁 Bộ sưu tập</span>
+          </button>
         </div>
 
         {/* Tab-specific sub-filters */}
@@ -371,149 +455,225 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Collections Workspace Tab */}
+      {activeTab === "collections" ? (
+        <CollectionsWorkspace onAddToCompare={handleAddToCompare} />
+      ) : (
+        <>
+          {/* Saved Views Control on Trending and Watchlist */}
+          {(activeTab === "trending" || activeTab === "watchlist") && (
+            <div className="flex items-center justify-between gap-3 bg-slate-900/50 border border-slate-800/80 rounded-xl px-4 py-2.5">
+              <SavedViewControl
+                scope={activeTab === "watchlist" ? "watchlist" : "trends"}
+                currentPayload={
+                  activeTab === "watchlist"
+                    ? {
+                        category: category === "Tất cả danh mục" ? null : category,
+                        trend_state: trendState,
+                        measured_only: evidenceFilter === "measured_only",
+                        confidence:
+                          evidenceFilter === "high" || evidenceFilter === "medium_or_high"
+                            ? evidenceFilter
+                            : null,
+                        sort_by: sortBy,
+                        sort_direction: sortOrder as "asc" | "desc",
+                        limit: 50,
+                      }
+                    : {
+                        category: category === "Tất cả danh mục" ? null : category,
+                        trend_state: trendState,
+                        measured_only: evidenceFilter === "measured_only",
+                        confidence:
+                          evidenceFilter === "high" || evidenceFilter === "medium_or_high"
+                            ? evidenceFilter
+                            : null,
+                        sort_by: sortBy,
+                        sort_direction: sortOrder as "asc" | "desc",
+                        limit: 50,
+                        search: searchQuery || null,
+                        min_score: minScore || null,
+                      }
+                }
+                onApply={
+                  activeTab === "watchlist"
+                    ? handleApplyWatchlistView
+                    : handleApplyTrendsView
+                }
+              />
+            </div>
+          )}
 
-      {/* Filter Bar: Category, Search, Min Score */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-900/40 border border-slate-800/80">
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-          <input
-            type="text"
-            aria-label="Tìm sản phẩm trong kết quả hiện tại"
-            placeholder="Tìm theo tên sản phẩm, shop..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-rose-500"
-          />
-        </div>
+          {/* Filter Bar: Category, Search, Min Score */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-900/40 border border-slate-800/80">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                aria-label="Tìm sản phẩm trong kết quả hiện tại"
+                placeholder="Tìm theo tên sản phẩm, shop..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-rose-500"
+              />
+            </div>
 
-        <div>
-          <select
-            value={category}
-            aria-label="Danh mục sản phẩm"
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <span className="text-xs text-slate-400 whitespace-nowrap">Điểm tối thiểu:</span>
-          <input
-            type="range"
-            aria-label="Điểm xu hướng tối thiểu"
-            min="0"
-            max="90"
-            step="10"
-            value={minScore}
-            onChange={(e) => setMinScore(Number(e.target.value))}
-            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-          />
-          <span className="text-xs font-semibold text-rose-400 w-8">{minScore}+</span>
-        </div>
-      </div>
-
-      {/* Decision Controls: Trend State, Evidence/Confidence, Sort Selection */}
-      {(activeTab === "trending" || activeTab === "watchlist") && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-900/30 border border-slate-800/60 text-xs">
-          <div>
-            <label className="block text-slate-400 font-medium mb-1.5">Trạng thái Dữ liệu:</label>
-            <select
-              aria-label="Trạng thái dữ liệu"
-              value={trendState}
-              onChange={(e) => setTrendState(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
-            >
-              <option value="eligible">🔥 Đang có xu hướng (Đủ điều kiện)</option>
-              <option value="all">🌐 Tất cả sản phẩm theo dõi</option>
-              <option value="stale">⚠️ Dữ liệu cũ (&gt; 8h)</option>
-              <option value="insufficient_signal">⏳ Chưa đủ đo lường 2 chu kỳ</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-slate-400 font-medium mb-1.5">Độ tin cậy & Bằng chứng:</label>
-            <select
-              aria-label="Độ tin cậy và bằng chứng"
-              value={evidenceFilter}
-              onChange={(e) => setEvidenceFilter(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
-            >
-              <option value="all">Tất cả mức tin cậy</option>
-              <option value="high">🟢 Tin cậy Cao (≥5 quan sát, ~24h chuẩn)</option>
-              <option value="medium_or_high">🔵 Tin cậy Trung bình trở lên</option>
-              <option value="measured_only">📏 Chỉ đo lường chuẩn ~24h (không ước tính)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-slate-400 font-medium mb-1.5">Sắp xếp theo:</label>
-            <div className="flex gap-2">
+            <div>
               <select
-                aria-label="Sắp xếp danh sách"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                value={category}
+                aria-label="Danh mục sản phẩm"
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
               >
-                <option value="trend_score">Điểm xu hướng (Trend Score)</option>
-                <option value="sales_velocity">Tốc độ bán 24h (Sales Velocity)</option>
-                <option value="sales_delta">Lượng bán 24h thực tế</option>
-                <option value="review_delta">Lượt đánh giá mới 24h</option>
-                <option value="freshness">Cập nhật gần nhất (Freshness)</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
-              <button
-                type="button"
-                aria-label="Đổi hướng sắp xếp"
-                onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700"
-                title={sortOrder === "desc" ? "Giảm dần" : "Tăng dần"}
-              >
-                {sortOrder === "desc" ? "↓" : "↑"}
-              </button>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-slate-400 whitespace-nowrap">Điểm tối thiểu:</span>
+              <input
+                type="range"
+                aria-label="Điểm xu hướng tối thiểu"
+                min="0"
+                max="90"
+                step="10"
+                value={minScore}
+                onChange={(e) => setMinScore(Number(e.target.value))}
+                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
+              <span className="text-xs font-semibold text-rose-400 w-8">{minScore}+</span>
             </div>
           </div>
-        </div>
+
+          {/* Decision Controls: Trend State, Evidence/Confidence, Sort Selection */}
+          {(activeTab === "trending" || activeTab === "watchlist") && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-900/30 border border-slate-800/60 text-xs">
+              <div>
+                <label className="block text-slate-400 font-medium mb-1.5">Trạng thái Dữ liệu:</label>
+                <select
+                  aria-label="Trạng thái dữ liệu"
+                  value={trendState}
+                  onChange={(e) => setTrendState(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                >
+                  <option value="eligible">🔥 Đang có xu hướng (Đủ điều kiện)</option>
+                  <option value="all">🌐 Tất cả sản phẩm theo dõi</option>
+                  <option value="stale">⚠️ Dữ liệu cũ (&gt; 8h)</option>
+                  <option value="insufficient_signal">⏳ Chưa đủ đo lường 2 chu kỳ</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-medium mb-1.5">Độ tin cậy & Bằng chứng:</label>
+                <select
+                  aria-label="Độ tin cậy và bằng chứng"
+                  value={evidenceFilter}
+                  onChange={(e) => setEvidenceFilter(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                >
+                  <option value="all">Tất cả mức tin cậy</option>
+                  <option value="high">🟢 Tin cậy Cao (≥5 quan sát, ~24h chuẩn)</option>
+                  <option value="medium_or_high">🔵 Tin cậy Trung bình trở lên</option>
+                  <option value="measured_only">📏 Chỉ đo lường chuẩn ~24h (không ước tính)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-medium mb-1.5">Sắp xếp theo:</label>
+                <div className="flex gap-2">
+                  <select
+                    aria-label="Sắp xếp danh sách"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                  >
+                    <option value="trend_score">Điểm xu hướng (Trend Score)</option>
+                    <option value="sales_velocity">Tốc độ bán 24h (Sales Velocity)</option>
+                    <option value="sales_delta">Lượng bán 24h thực tế</option>
+                    <option value="review_delta">Lượt đánh giá mới 24h</option>
+                    <option value="freshness">Cập nhật gần nhất (Freshness)</option>
+                  </select>
+                  <button
+                    type="button"
+                    aria-label="Đổi hướng sắp xếp"
+                    onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700"
+                    title={sortOrder === "desc" ? "Giảm dần" : "Tăng dần"}
+                  >
+                    {sortOrder === "desc" ? "↓" : "↑"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Product List Content */}
+          {loading ? (
+            <div className="text-center py-20 text-slate-500 flex flex-col items-center justify-center space-y-2">
+              <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
+              <span>Đang tính toán phân tích dữ liệu...</span>
+            </div>
+          ) : error ? null : filteredProducts.length === 0 ? (
+            <div className="text-center py-20 rounded-xl border border-dashed border-slate-800 bg-slate-900/20 text-slate-400">
+              <p className="text-base font-semibold">
+                {activeTab === "watchlist"
+                  ? "Chưa có sản phẩm nào trong Watchlist"
+                  : activeTab === "trending"
+                  ? "Chưa có lịch sử đủ để xếp hạng xu hướng"
+                  : "Chưa tìm thấy sản phẩm phù hợp"}
+              </p>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                {activeTab === "watchlist"
+                  ? "Bấm vào biểu tượng ngôi sao ⭐ trên bất kỳ thẻ sản phẩm nào hoặc gửi URL sản phẩm để đưa vào danh sách theo dõi định kỳ."
+                  : activeTab === "trending"
+                  ? "Quét sản phẩm đã theo dõi định kỳ; điểm xu hướng xuất hiện khi có ít nhất hai quan sát trong khoảng phù hợp."
+                  : "Hãy thử điều chỉnh bộ lọc hoặc bấm \"Chạy Crawler Ngay\" để quét thêm sản phẩm mới."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredProducts.map((prod, index) => (
+                <ProductCard
+                  key={prod.product_id}
+                  product={prod}
+                  rank={index + 1}
+                  isWatched={watchedProductIds.has(prod.product_id)}
+                  onToggleWatch={handleToggleWatch}
+                  onAddToCompare={handleAddToCompare}
+                  onAddToCollection={handleAddToCollection}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Product List Content */}
-      {loading ? (
-        <div className="text-center py-20 text-slate-500 flex flex-col items-center justify-center space-y-2">
-          <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
-          <span>Đang tính toán phân tích dữ liệu...</span>
-        </div>
-      ) : error ? null : filteredProducts.length === 0 ? (
-        <div className="text-center py-20 rounded-xl border border-dashed border-slate-800 bg-slate-900/20 text-slate-400">
-          <p className="text-base font-semibold">
-            {activeTab === "watchlist"
-              ? "Chưa có sản phẩm nào trong Watchlist"
-              : activeTab === "trending"
-              ? "Chưa có lịch sử đủ để xếp hạng xu hướng"
-              : "Chưa tìm thấy sản phẩm phù hợp"}
-          </p>
-          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            {activeTab === "watchlist"
-              ? "Bấm vào biểu tượng ngôi sao ⭐ trên bất kỳ thẻ sản phẩm nào hoặc gửi URL sản phẩm để đưa vào danh sách theo dõi định kỳ."
-              : activeTab === "trending"
-              ? "Quét sản phẩm đã theo dõi định kỳ; điểm xu hướng xuất hiện khi có ít nhất hai quan sát trong khoảng phù hợp."
-              : "Hãy thử điều chỉnh bộ lọc hoặc bấm \"Chạy Crawler Ngay\" để quét thêm sản phẩm mới."}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredProducts.map((prod, index) => (
-            <ProductCard
-              key={prod.product_id}
-              product={prod}
-              rank={index + 1}
-              isWatched={watchedProductIds.has(prod.product_id)}
-              onToggleWatch={handleToggleWatch}
-            />
-          ))}
-        </div>
+      {/* Phase 5: Transient Compare Tray */}
+      <CompareTray
+        staged={stagedCompare}
+        onRemove={handleRemoveFromCompare}
+        onClear={handleClearCompare}
+        onOpenCompare={() => setIsCompareModalOpen(true)}
+      />
+
+      {/* Phase 5: Compare Modal */}
+      <CompareModal
+        productIds={stagedCompare.map((p) => p.productId)}
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+      />
+
+      {/* Phase 5: Add to Collection Modal */}
+      {collectionModalProduct && (
+        <AddToCollectionModal
+          productId={collectionModalProduct.id}
+          productTitle={collectionModalProduct.title}
+          isOpen={true}
+          onClose={() => setCollectionModalProduct(null)}
+        />
       )}
     </div>
   );

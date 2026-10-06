@@ -9,6 +9,9 @@ from app.models.watchlist import WatchlistItem
 from app.models.system_metadata import SystemMetadata
 from app.models.alert_rule import AlertRule
 from app.models.alert_event import AlertEvent
+from app.models.collection import Collection
+from app.models.collection_item import CollectionItem
+from app.models.saved_view import SavedView
 
 __all__ = [
     "Base",
@@ -22,4 +25,7 @@ __all__ = [
     "SystemMetadata",
     "AlertRule",
     "AlertEvent",
+    "Collection",
+    "CollectionItem",
+    "SavedView",
 ]

@@ -214,3 +214,106 @@ export interface DeepDiagnosticsResult {
   message?: string;
 }
 
+// Phase 5: Opportunity Workspace — Collections, Saved Views & Compare Types
+export type ReviewStatus = "new" | "reviewing" | "candidate" | "rejected";
+
+export interface Collection {
+  id: number;
+  name: string;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+  item_count?: number;
+}
+
+export interface CollectionItem {
+  id: number;
+  collection_id: number;
+  product_id: number;
+  review_status: ReviewStatus;
+  notes?: string | null;
+  added_at: string;
+  updated_at: string;
+  product?: Product | null;
+  analysis?: TrendMetrics | null;
+  is_watched?: boolean;
+}
+
+export interface TrendsSavedViewPayload {
+  category?: string | null;
+  trend_state: string;
+  measured_only: boolean;
+  confidence?: string | null;
+  sort_by: string;
+  sort_direction: "asc" | "desc";
+  limit: number;
+  search?: string | null;
+  min_score?: number | null;
+}
+
+export interface WatchlistSavedViewPayload {
+  category?: string | null;
+  trend_state: string;
+  measured_only: boolean;
+  confidence?: string | null;
+  sort_by: string;
+  sort_direction: "asc" | "desc";
+  limit: number;
+}
+
+export interface SavedView<T = TrendsSavedViewPayload | WatchlistSavedViewPayload> {
+  id: number;
+  name: string;
+  scope: "trends" | "watchlist";
+  payload_version: number;
+  payload: T;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionContext {
+  collection_id: number;
+  review_status: ReviewStatus;
+  notes?: string | null;
+}
+
+export interface ComparedProduct {
+  product_id: number;
+  external_product_id: string;
+  title: string;
+  url?: string | null;
+  image_url?: string | null;
+  shop_id?: string | null;
+  shop_name?: string | null;
+  category?: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  is_watched: boolean;
+  collection_context?: CollectionContext | null;
+
+  trend_score: number;
+  trend_state: string;
+  confidence?: string | null;
+  reasons: TrendReason[];
+  sales_velocity_24h?: number | null;
+  velocity_is_estimated: boolean;
+  sold_delta_24h?: number | null;
+  sold_delta_7d?: number | null;
+  sales_acceleration?: number | null;
+  review_delta_24h?: number | null;
+  review_delta_7d?: number | null;
+  freshness_hours?: number | null;
+  current_price?: number | null;
+  rating?: number | null;
+  review_count?: number | null;
+
+  recent_alert_count_7d: number;
+  latest_alert_at?: string | null;
+}
+
+export interface CompareResponse {
+  as_of_utc: string;
+  collection_id?: number | null;
+  products: ComparedProduct[];
+}
+

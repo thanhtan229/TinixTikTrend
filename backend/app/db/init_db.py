@@ -1,10 +1,11 @@
-from sqlalchemy import select
+from sqlalchemy import select, inspect
 from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
-from app.models import Category, Product, ProductSnapshot, CrawlRun, ProductVideoLink, WatchlistItem, SystemMetadata
+from app.models import Category, Product, ProductSnapshot, CrawlRun, ProductVideoLink, WatchlistItem, SystemMetadata, Collection, CollectionItem, SavedView
 from app.core.logging import logger, log_event
 from app.models.quarantine import QuarantinedProduct
+from app.services.backup_service import BackupService
 from datetime import datetime, timezone
 
 
@@ -60,14 +61,34 @@ def init_db(db: Session = None) -> None:
             ))
             log_event("db_init", f"Backfilled {len(legacy_tracked)} legacy tracked products to Watchlist.")
 
-        # Phase 4: Compatibility marker for portable database backups
+        # Validate required schema derived dynamically from SQLAlchemy model metadata
+        inspector = inspect(db.connection()) if db is not None else inspect(engine)
+        existing_tables = set(inspector.get_table_names())
+        required_schema = BackupService.get_required_schema()
+        missing_tables = set(required_schema.keys()) - existing_tables
+        if missing_tables:
+            raise RuntimeError(f"Required schema validation failed: missing tables {sorted(list(missing_tables))}")
+        for table_name, expected_cols in required_schema.items():
+            actual_cols = {col["name"] for col in inspector.get_columns(table_name)}
+            missing_cols = expected_cols - actual_cols
+            if missing_cols:
+                raise RuntimeError(
+                    f"Required schema validation failed: table '{table_name}' missing columns {sorted(list(missing_cols))}"
+                )
+
+        # Phase 5: Compatibility marker for portable database backups (advances "1" -> "2")
         compat_marker = db.get(SystemMetadata, "portable_backup_compatibility_version")
         if compat_marker is None:
             db.add(SystemMetadata(
                 key="portable_backup_compatibility_version",
-                value="1"
+                value=BackupService.COMPATIBILITY_VERSION,
             ))
-            log_event("db_init", "Seeded portable_backup_compatibility_version = 1")
+            log_event("db_init", f"Seeded portable_backup_compatibility_version = {BackupService.COMPATIBILITY_VERSION}")
+        elif compat_marker.value != BackupService.COMPATIBILITY_VERSION:
+            old_val = compat_marker.value
+            compat_marker.value = BackupService.COMPATIBILITY_VERSION
+            compat_marker.updated_at = datetime.now(timezone.utc)
+            log_event("db_init", f"Advanced portable_backup_compatibility_version from {old_val} to {BackupService.COMPATIBILITY_VERSION}")
 
         for run in db.query(CrawlRun).filter(CrawlRun.status == "running").all():
             run.status = "partial" if run.snapshots_created else "failed"

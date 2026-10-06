@@ -118,3 +118,18 @@ def export_product_history(product_id: int, range: str = Query("24h"), db: Sessi
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
+
+@router.get("/{product_id}/collections")
+def get_product_collections(product_id: int, db: Session = Depends(get_db)):
+    from app.services.collection_service import CollectionService
+    service = CollectionService(db)
+    return service.get_collections_for_product(product_id)
+
+
+@router.post("/compare")
+def compare_products_alias(payload: dict, db: Session = Depends(get_db)):
+    from app.services.compare_service import CompareService, CompareRequest
+    service = CompareService(db)
+    req = CompareRequest(**payload)
+    return service.compare_products(product_ids=req.product_ids, collection_id=req.collection_id)
+

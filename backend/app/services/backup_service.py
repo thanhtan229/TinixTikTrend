@@ -10,11 +10,13 @@ from app.core.logging import logger, log_event
 from app.db.base import Base
 import app.models  # Ensure all SQLAlchemy models are registered on Base.metadata
 
-BACKUP_FILENAME_PATTERN = re.compile(r"^tinix-affiliate-v1-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
-SAFETY_BACKUP_PATTERN = re.compile(r"^tinix-pre-restore-v1-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
+BACKUP_FILENAME_PATTERN = re.compile(r"^tinix-affiliate-v[12]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
+SAFETY_BACKUP_PATTERN = re.compile(r"^tinix-pre-restore-v[12]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
 
 
 class BackupService:
+    COMPATIBILITY_VERSION: str = "2"
+
     @classmethod
     def get_required_schema(cls) -> Dict[str, Set[str]]:
         """
@@ -26,27 +28,27 @@ class BackupService:
             for table_name, table in Base.metadata.tables.items()
         }
 
-    @staticmethod
-    def generate_backup_filename(dt: Optional[datetime] = None) -> str:
-        """Generates approved managed backup filename: tinix-affiliate-v1-YYYYMMDDTHHMMSS.ffffffZ.sqlite3"""
+    @classmethod
+    def generate_backup_filename(cls, dt: Optional[datetime] = None) -> str:
+        """Generates approved managed backup filename: tinix-affiliate-v2-YYYYMMDDTHHMMSS.ffffffZ.sqlite3"""
         if dt is None:
             dt = datetime.now(timezone.utc)
         elif dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         else:
             dt = dt.astimezone(timezone.utc)
-        return f"tinix-affiliate-v1-{dt.strftime('%Y%m%dT%H%M%S')}.{dt.microsecond:06d}Z.sqlite3"
+        return f"tinix-affiliate-v{cls.COMPATIBILITY_VERSION}-{dt.strftime('%Y%m%dT%H%M%S')}.{dt.microsecond:06d}Z.sqlite3"
 
-    @staticmethod
-    def generate_safety_backup_filename(dt: Optional[datetime] = None) -> str:
-        """Generates approved pre-restore safety backup filename: tinix-pre-restore-v1-YYYYMMDDTHHMMSS.ffffffZ.sqlite3"""
+    @classmethod
+    def generate_safety_backup_filename(cls, dt: Optional[datetime] = None) -> str:
+        """Generates approved pre-restore safety backup filename: tinix-pre-restore-v2-YYYYMMDDTHHMMSS.ffffffZ.sqlite3"""
         if dt is None:
             dt = datetime.now(timezone.utc)
         elif dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         else:
             dt = dt.astimezone(timezone.utc)
-        return f"tinix-pre-restore-v1-{dt.strftime('%Y%m%dT%H%M%S')}.{dt.microsecond:06d}Z.sqlite3"
+        return f"tinix-pre-restore-v{cls.COMPATIBILITY_VERSION}-{dt.strftime('%Y%m%dT%H%M%S')}.{dt.microsecond:06d}Z.sqlite3"
 
     @staticmethod
     def get_db_path() -> Path:
@@ -148,12 +150,12 @@ class BackupService:
             # 4. Compatibility version marker
             cursor.execute("SELECT value FROM system_metadata WHERE key = 'portable_backup_compatibility_version';")
             row = cursor.fetchone()
-            if not row or row[0] != "1":
+            if not row or row[0] != cls.COMPATIBILITY_VERSION:
                 actual_val = row[0] if row else "missing"
                 conn.close()
                 return False, (
-                    f"Phiên bản tương thích không hợp lệ (yêu cầu '1', tìm thấy '{actual_val}'). "
-                    "Phase 4 chỉ hỗ trợ phục hồi cùng phiên bản."
+                    f"Phiên bản tương thích không hợp lệ (yêu cầu '{cls.COMPATIBILITY_VERSION}', tìm thấy '{actual_val}'). "
+                    "Phase 5 chỉ hỗ trợ phục hồi cùng phiên bản."
                 )
 
             conn.close()
@@ -221,7 +223,7 @@ class BackupService:
                 "file_path": str(target_path),
                 "size_bytes": target_path.stat().st_size,
                 "created_at": now.isoformat(),
-                "compatibility_version": "1",
+                "compatibility_version": cls.COMPATIBILITY_VERSION,
             }
         except Exception as e:
             if staging_path.exists():

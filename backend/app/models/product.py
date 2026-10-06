@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.watchlist import WatchlistItem
     from app.models.alert_rule import AlertRule
     from app.models.alert_event import AlertEvent
+    from app.models.collection_item import CollectionItem
 
 
 def utc_now() -> datetime:
@@ -66,6 +67,12 @@ class Product(Base):
 
     alert_events: Mapped[List["AlertEvent"]] = relationship(
         "AlertEvent",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+
+    collection_items: Mapped[List["CollectionItem"]] = relationship(
+        "CollectionItem",
         back_populates="product",
         cascade="all, delete-orphan",
     )

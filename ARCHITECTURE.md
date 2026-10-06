@@ -1,6 +1,6 @@
 # Current architecture
 
-Updated: 2026-10-03.
+Updated: 2026-10-06.
 
 Next.js 15 / React 18 dashboard on 127.0.0.1:3000 calls FastAPI on 127.0.0.1:8000. SQLAlchemy stores products, snapshots, crawl runs, categories and additive quarantine records in local SQLite. APScheduler triggers collection at configured Vietnam local times.
 
@@ -99,4 +99,41 @@ API crawler/status chỉ trả local_session_status = missing/available/invalid;
    - Sao lưu phiên bản 2 bảo toàn toàn bộ dữ liệu Phase 1–5 (`collections`, `collection_items`, `saved_views` cùng toàn bộ bảng cũ).
    - Phiên đăng nhập TikTok tiếp tục được loại trừ hoàn toàn khỏi tệp sao lưu.
 
+## Kinh tế Tiếp thị Liên kết & Kịch bản Quyết định (Phase 6 - Kiến trúc đã chấp thuận ADR-005 - Chưa triển khai)
 
+> **Trạng thái:** Kiến trúc đã được phê duyệt qua [`ADR-005`](docs/architecture/ADR-005.md). **Chưa triển khai code hoặc schema.** Sản phẩm hiện hành duy trì ở Phase 5 với phiên bản tương thích `"2"`. Các nguyên tắc dưới đây là cam kết kiến trúc bắt buộc cho quá trình lập kế hoạch và triển khai Phase 6 trong tương lai.
+
+1. **Phân tách Miền Độc lập (Domain Separation):**
+   - Kinh tế tiếp thị liên kết (Affiliate Economics) phân tách tuyệt đối khỏi Trend Score, tín hiệu bằng chứng (evidence) và độ tin cậy (confidence) của Phase 2.
+   - Dữ liệu và giả định kinh tế không bao giờ làm méo mó, thay đổi hay nhân vào điểm số xu hướng thị trường. Tuyệt đối không tạo điểm số lai (blended trend-profit score).
+2. **Không Suy diễn Phân bổ Doanh số Thị trường (No Market-Sales Attribution):**
+   - Số lượng bán tích lũy (`Product.sold_count`) và tốc độ bán 24h (`sales_velocity_24h`) là quan sát khách quan về thị trường chung, không phản ánh doanh số của affiliate.
+   - Nghiêm cấm công thức nhân tốc độ bán thị trường với hoa hồng để suy diễn "thu nhập ước tính" (`sales_velocity × commission`). Hoa hồng chỉ được tính trên đơn hàng có phân bổ trực tiếp thông qua giả định kịch bản người dùng (`expected_attributable_orders`).
+3. **Chiến lược Nguồn Giả định Thủ công (Manual-First Source Strategy):**
+   - MVP ưu tiên dữ liệu giả định do người dùng tự nhập và quản lý theo kịch bản.
+   - Trường hoa hồng thu thập từ crawler (`ProductSnapshot.commission_rate`) chỉ là dữ liệu quan sát tham khảo, không có thẩm quyền kinh tế tự động.
+   - Giá sản phẩm thị trường chỉ được sao chép và đóng băng thành proxy có nhãn và dấu thời gian khi người dùng chủ động yêu cầu, tuyệt đối không liên kết động vào dữ liệu crawler biến động.
+4. **Kịch bản Thuộc sở hữu Product & Bất biến Duy nhất Một Mặc định (Exactly-One-Default Invariant):**
+   - Mô hình dữ liệu phân cấp: Một `Product` sở hữu nhiều kịch bản kinh tế có tên (`economics_scenarios`).
+   - Bất biến mặc định: Khi một Product có ít nhất một kịch bản, **luôn tồn tại đúng một** kịch bản mặc định (`is_default = true`).
+   - Kịch bản đầu tiên tạo cho một sản phẩm tự động nhận cờ mặc định.
+   - Chuyển đổi mặc định diễn ra nguyên tử trong giao dịch database.
+   - Xóa kịch bản mặc định khi vẫn còn kịch bản khác sẽ tự động thăng cấp kịch bản cũ nhất còn lại theo thứ tự `(created_at, id)`. Khi sản phẩm không có kịch bản nào, số mặc định bằng 0.
+5. **Ngữ nghĩa Số học & Tiền tệ Toàn vẹn (Integer VND & Basis Points):**
+   - Hệ thống thuần túy hỗ trợ VND (VND-only MVP); không hỗ trợ đa tiền tệ hoặc quy đổi ngoại tệ (FX).
+   - Giá trị tiền tệ được lưu trữ dưới dạng số nguyên VND (integer whole-VND, không có đơn vị thập phân).
+   - Tỷ lệ hoa hồng được lưu trữ dưới dạng điểm cơ bản nguyên (`bps`, 10,000 bps = 100%).
+   - Bảo toàn giá trị thiếu (`null ≠ 0`): Các trường giả định chưa nhập giữ nguyên `null`, tuyệt đối không tự động gán bằng `0`.
+   - Phân tách rõ ràng giữa chi phí cố định (mẫu sản phẩm, sản xuất nội dung, ngân sách quảng cáo) và chi phí biến đổi cho mỗi đơn hàng phân bổ.
+6. **Thẩm quyền Tính toán & Làm tròn Thuộc Backend Duy nhất (Backend Calculation Authority):**
+   - Toàn bộ công thức tài chính (hoa hồng ước tính, tổng chi phí cố định, biên đóng góp, điểm hòa vốn, lợi nhuận dự kiến) được tính toán tất định tại thời điểm đọc ở backend.
+   - Không lưu trữ (not persisted) bất kỳ chỉ số kinh tế phái sinh nào vào database.
+   - Áp dụng chính sách làm tròn chuẩn round-half-up về số nguyên VND tại backend. Frontend chỉ hiển thị, không nắm bất kỳ thẩm quyền tính toán hay làm tròn tài chính nào.
+7. **Ranh giới Phiên bản Tương thích "3" & Kế thừa ADR-004 (Compatibility "2" → "3"):**
+   - Khi schema Phase 6 được triển khai (bổ sung bảng bắt buộc duy nhất `economics_scenarios`), marker khả chuyển trong `system_metadata` sẽ nâng cấp từ `"2"` lên `"3"`.
+   - Toàn bộ cơ chế sao lưu nóng (`BACKUP.bat`) và phục hồi ngoại tuyến (`RESTORE.bat`) theo nguyên tắc cùng phiên bản của ADR-004 tiếp tục giữ nguyên hiệu lực. Ứng dụng Phase 6 tương lai sẽ từ chối phục hồi các bản sao lưu phiên bản 1 và 2.
+   - Trong giai đoạn hiện tại (chưa triển khai code/schema), phiên bản tương thích của hệ thống đang chạy vẫn là `"2"`.
+8. **Cô lập Không gian Làm việc & Ranh giới Phạm vi Ngoài:**
+   - Saved View V1 (Trends & Watchlist) giữ nguyên cấu trúc tham số tĩnh, không mở rộng sang kinh tế trong MVP.
+   - Không có luật cảnh báo kinh tế và không hỗ trợ xuất CSV kinh tế trong MVP.
+   - Không tích hợp TikTok Affiliate API/OAuth, không cào Creator Center riêng tư, không CAPTCHA bypass, và không bổ sung thư viện phụ thuộc bên thứ ba.

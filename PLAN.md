@@ -1,6 +1,6 @@
 # Production review remediation plan
 
-Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, Phase 5 completion and release qualification, and Phase 6 research gate reconciliation & ADR-005 gate.
+Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, Phase 5 completion and release qualification, Phase 6 research acceptance, and ADR-005 architecture acceptance.
 
 ## Baseline Validation: PASS
 
@@ -219,10 +219,10 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 ---
 
-## Phase 6 — Affiliate Economics & Profitability Intelligence: SELECTED / RESEARCH COMPLETE
+## Phase 6 — Affiliate Economics & Profitability Intelligence: SELECTED / RESEARCH COMPLETE / ARCHITECTURE ACCEPTED
 
 - **Decision State:**
-  - **Phase 6 Status:** `SELECTED / RESEARCH COMPLETE`
+  - **Phase 6 Status:** `SELECTED / RESEARCH COMPLETE / ARCHITECTURE ACCEPTED`
   - **Phase Name:** `Affiliate Economics & Profitability Intelligence`
   - **Selection Record:** [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md)
   - **Authoritative Selection Commit:** `d97f00f7819e778954a76abe3605e1442ea4155d`
@@ -233,11 +233,13 @@ All release acceptance criteria are now validated under the revised acceptance c
   - **Research Acceptance Record:** [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md)
   - **Product Recommendation:** `RECOMMEND WITH REVISED SCOPE — ACCEPTED`
   - **Selected MVP Direction:** `VND-only, manual-first Product Economics Scenarios`
-  - **Architecture Gate:** `ADR-005 REQUIRED BEFORE PHASE 6 IMPLEMENTATION-PLAN APPROVAL`
-  - **Phase Plan Status:** `NOT STARTED`
+  - **Architecture Gate:** `CLOSED / ACCEPTED`
+  - **ADR-005 Status:** `ACCEPTED` ([`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md))
+  - **ADR-005 Acceptance Record:** [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md)
+  - **Phase Plan Status:** `NOT YET APPROVED` (Phase 6 planning is now authorized to begin)
   - **Implementation Status:** `NOT AUTHORIZED`
   - **Acceptance Criteria:** `NONE DEFINED YET` (no Phase 6 acceptance criteria exist yet)
-  - **Planning Rule:** Planning may begin only after the required architecture decision (`ADR-005`) is drafted and reviewed as directed by Project Control.
+  - **Planning Authorization:** Phase 6 planning may now begin against the accepted research and accepted ADR-005. The future plan must strictly comply with ADR-005 and the accepted research artifact. Implementation remains NOT AUTHORIZED until the Phase 6 implementation plan is reviewed and approved by Project Control.
 
 - **Accepted Revised Scope & Architectural Constraints:**
   - **MVP Product Direction:** VND-only, manual-first Product Economics Scenarios.
@@ -281,25 +283,39 @@ All release acceptance criteria are now validated under the revised acceptance c
     - Zero N+1 strictly enforced.
   - **Regression Ceiling Recommendation:** `< 200ms` on relevant 200-product / 5,000-snapshot representative paths. `< 50ms` remains an optimization/research target, not yet a hard gate unless planning later explicitly adopts it.
 
-- **Architecture Gate: ADR-005 Required:**
-  - **Status:** `ADR-005 REQUIRED BEFORE PHASE 6 IMPLEMENTATION-PLAN APPROVAL`
-  - **Proposed Title:** `ADR-005 — Affiliate economics assumptions, provenance, numeric semantics, and calculation authority`
-  - **Rule:** ADR-005 must be reviewed and accepted by Project Control before the Phase 6 implementation plan is approved.
-  - **Expected Decision Scope:**
-    - Market evidence vs. user assumptions vs. derived economics separation;
-    - Prohibition of sold-count/sales-velocity attribution;
-    - Manual-first source policy;
-    - Observed-price frozen-proxy semantics;
-    - VND-only MVP;
-    - Integer VND + basis-points persistence;
-    - Backend calculation and rounding authority;
-    - Fixed vs. variable costs;
-    - Null ≠ zero semantics;
-    - Multiple Product-scoped scenarios with exactly-one-default invariant;
-    - Trend Score, Watchlist, alert, and crawler isolation;
-    - Portable backup compatibility advance `"2" → "3"`;
-    - Future official Affiliate API source and override precedence.
-  - *(ADR-005 is not created in this reconciliation.)*
+- **Architecture Gate: ADR-005 Accepted:**
+  - **Status:** `CLOSED / ACCEPTED`
+  - **Authoritative ADR:** [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md)
+  - **ADR Title:** `ADR-005 — Affiliate economics assumptions, provenance, numeric semantics, and calculation authority`
+  - **Decision Record:** [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md)
+  - **Accepted Invariants:**
+    - Domain separation: Market evidence vs. user assumptions vs. derived economics.
+    - Prohibition of sold-count / sales-velocity affiliate attribution.
+    - Manual-first source strategy; crawler `ProductSnapshot.commission_rate` is not automatic economics authority.
+    - Observed product price can only be copied and frozen as a labeled proxy with timestamp; no dynamic linking to fluctuating crawler observations.
+    - Product-scoped multiple economics scenarios with exactly-one-default invariant when scenarios exist.
+    - Currency is VND-only; integer whole-VND persistence; commission rates in integer basis points (`10,000 bps = 100%`).
+    - Null ≠ zero semantics: missing assumption fields are preserved as null.
+    - Fixed campaign costs vs. variable cost per attributable order separation.
+    - Calculation and rounding authority rests strictly with backend (round-half-up whole-VND); no derived values persisted in database.
+    - Additive schema: exactly one required new table `economics_scenarios`.
+    - Portable backup compatibility advances `"2" → "3"` upon Phase 6 schema implementation under unchanged ADR-004 same-version restore semantics. Current implemented product remains compatibility `"2"`.
+    - Saved View V1 schemas, alert rules, and crawler unchanged for MVP.
+    - No official Affiliate API/OAuth in MVP; no private dashboard scraping; no new third-party dependencies.
+
+- **Planning Constraints for Future Phase 6 Plan:**
+  - The future Phase 6 plan must strictly comply with ADR-005 and accepted research.
+  - The plan must explicitly cover concurrency and invariant testing for default scenario behavior, at minimum:
+    1. Concurrent first-scenario creation on a Product (ensuring deterministic single default);
+    2. Concurrent attempts to set different defaults on the same Product;
+    3. Delete-current-default racing with default switch;
+    4. Partial unique-index enforcement at the database level (`UNIQUE(product_id) WHERE is_default = 1`);
+    5. Service-level exactly-one-default invariant enforcement;
+    6. Transaction rollback behavior upon conflict/failure;
+    7. No committed state where a Product with scenarios has zero defaults;
+    8. No committed state where a Product with scenarios has multiple defaults.
+  - No acceptance criteria or test cases are defined or created in this task.
+  - Implementation plan must be reviewed and approved by Project Control before any coding begins.
 
 - **Preserved Architecture Boundaries:**
   - `Watchlist = monitoring`;
@@ -332,8 +348,8 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
 - **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
 - **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (Project Control accepted the repository-aware QA report; prior QA-environment availability blocker closed; qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md); historical blocked record preserved in [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)).
-- **Next Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`SELECTED / RESEARCH COMPLETE`; research `CLOSED / ACCEPTED`, product direction `RECOMMEND WITH REVISED SCOPE — ACCEPTED`, plan `NOT STARTED`, implementation `NOT AUTHORIZED`, required next architecture gate: `ADR-005 REQUIRED BEFORE PHASE 6 IMPLEMENTATION-PLAN APPROVAL`, authoritative actual Phase 6 selection HEAD commit: `d97f00f7819e778954a76abe3605e1442ea4155d`; previously reported identifier `d97f00f9a25b16f398f658be424b94f1e58286ad` superseded; planning may begin only after ADR-005 is drafted/reviewed as directed by Project Control). Selecting and researching Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md); research acceptance record: [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md); research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md).
-- **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
+- **Next Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`SELECTED / RESEARCH COMPLETE / ARCHITECTURE ACCEPTED`; research `CLOSED / ACCEPTED`, ADR-005 `ACCEPTED`, product direction `RECOMMEND WITH REVISED SCOPE — ACCEPTED`, architecture gate `CLOSED / ACCEPTED`, plan `NOT YET APPROVED`, implementation `NOT AUTHORIZED`, authoritative actual Phase 6 selection HEAD commit: `d97f00f7819e778954a76abe3605e1442ea4155d`; previously reported identifier `d97f00f9a25b16f398f658be424b94f1e58286ad` superseded; planning is now authorized to begin against accepted research and ADR-005). Selecting, researching, and accepting architecture for Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md); research acceptance record: [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md); ADR-005 acceptance record: [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md); research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md); authoritative ADR: [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md).
+- **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` in currently implemented product remains `"2"`); ADR-005 now `ACCEPTED` (selects target compatibility `"3"` for future Phase 6 schema); `ARCHITECTURE.md` updated with Phase 6 architecture section.
 - **QA Code & Runtime Qualification:** PASS. Backend 178/178 pytest PASS (focused Phase 5 suite 25/25 PASS), Frontend 46/46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 3 SQL queries with Collection context / 2 without; Saved View apply: 0 additional queries; Zero N+1; representative Compare benchmark (200 products / 5,000 snapshots / 5-product compare: best 4.42ms, median 5.14ms, p95 5.42ms, worst 5.42ms; <200ms hard gate PASS, <50ms research target PASS); Phase-4/v1 → Phase-5/v2 isolated bootstrap PASS; version-1 backup rejection PASS; version-2 backup/restore round-trip PASS; no functional regression detected; ADR-003 unchanged; ADR-004 same-version semantics unchanged.
 - **Source-Control Handoff:** QUALIFIED / RECONCILED. Qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.
 - **Supported Release Boundary:** `Windows / local / source-based runtime`. Standalone executable/installer packaging remains deferred.

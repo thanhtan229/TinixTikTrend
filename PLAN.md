@@ -1,6 +1,6 @@
 # Production review remediation plan
 
-Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, Phase 5 completion, and Phase 5 release QA qualification state.
+Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, Phase 5 completion and release qualification, and Phase 6 selection & research gate.
 
 ## Baseline Validation: PASS
 
@@ -140,7 +140,7 @@ All release acceptance criteria are now validated under the revised acceptance c
   - **ADR Requirement:** ADR-003 unchanged; ADR-004 semantics unchanged (`portable_backup_compatibility_version` advanced from `"1"` to `"2"`).
   - **Architecture Invariants:** `ARCHITECTURE.md` updated and active.
   - **Compatibility Version:** Advanced to `"2"`; same-version restore semantics strictly enforced.
-  - **Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` for the supported `Windows / local / source-based runtime`. Project Control accepted the repository-aware QA report (decision record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md)); prior QA-environment availability blocker closed (historical record: [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)); qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; historical Phase 4 release baseline remains valid (`4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`); packaging remains deferred; no Phase 6 selected.
+  - **Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` for the supported `Windows / local / source-based runtime`. Project Control accepted the repository-aware QA report (decision record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md)); prior QA-environment availability blocker closed (historical record: [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)); qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; historical Phase 4 release baseline remains valid (`4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`); packaging remains deferred; Phase 6 selected subsequently for research.
 
 - **Implementation Validation Evidence:**
   - **Backend pytest:** `178 passed` (focused Phase 5 suite `25/25` PASS), 1 StarletteDeprecationWarning (100% PASS).
@@ -219,13 +219,77 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 ---
 
+## Phase 6 — Affiliate Economics & Profitability Intelligence: SELECTED / RESEARCH REQUIRED
+
+- **Decision State:**
+  - **Phase 6 Status:** `SELECTED / RESEARCH REQUIRED`
+  - **Phase Name:** `Affiliate Economics & Profitability Intelligence`
+  - **Selection Record:** [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md)
+  - **Selection Intent:** Extend the current decision workflow from `organize → review → compare → decide` toward `evaluate economics → compare commercial attractiveness → prioritize affiliate opportunities` without changing existing Trend Score, Watchlist monitoring semantics, crawler behavior, or Phase 5 Collection/Compare authority.
+  - **Research Gate:** `OPEN / RESEARCH REQUIRED`
+  - **Research Status:** `NOT YET COMPLETE`
+  - **Phase Plan Status:** `NOT STARTED`
+  - **Implementation Status:** `NOT AUTHORIZED`
+  - **Acceptance Criteria:** `NONE DEFINED YET` (no Phase 6 acceptance criteria exist yet)
+  - **Planning Rule:** `Phase 6 planning is blocked on completion and Project Control review of research.`
+  - **Research Location:** Substantial research should occur in `01 — Architecture & Repo Research`.
+
+- **Research Gate Rationale & Expected Questions:**
+  Research must determine at least:
+  - Authoritative commission/affiliate data sources available to this local product;
+  - VN-specific commission/fee semantics where relevant;
+  - Whether commission data can be reliably extracted, entered manually, or both;
+  - Revenue/profitability terminology and formulas;
+  - Distinction between product selling price, gross merchandise value/revenue proxies, affiliate commission rate, estimated affiliate earnings, user-entered product/sample/content/ad costs, and contribution/profit estimates;
+  - Missing/null/estimated economics and false-precision avoidance;
+  - Time-varying price/commission semantics;
+  - Whether economics state belongs to Product, CollectionItem, or a separate scenario/assumption entity;
+  - Whether multiple economic scenarios per Product are required;
+  - Persistence/history requirements;
+  - Backup/restore compatibility consequences;
+  - Schema/bootstrap implications;
+  - Effect on current compatibility version `"2"`;
+  - Integration with Collections, Saved Views and Compare;
+  - Whether Compare should display economics or a separate economics comparison surface is preferable;
+  - Performance/query constraints;
+  - Frontend UX;
+  - Security/privacy implications;
+  - External-network/runtime dependency implications;
+  - ADR requirement;
+  - Explicit out-of-scope boundaries.
+
+- **Preserved Architecture Boundaries:**
+  - `Watchlist = monitoring`;
+  - `Collections = decision organization`;
+  - `WatchlistItem.notes` provenance ownership;
+  - `CollectionItem.notes` decision-note ownership;
+  - Phase 2 authoritative Trend Score/evidence semantics (economics data must NOT modify Trend Score);
+  - Phase 3 alert semantics;
+  - Phase 4 same-version backup policy;
+  - Phase 5 Saved View contracts;
+  - Transient Compare semantics;
+  - Shared Compare `as_of_utc`;
+  - Compatibility version `"2"` until research/planning explicitly determines otherwise.
+
+- **Preserved Debt & Deferred State:**
+  - 1 High `source-map-js` advisory in the production dependency graph (build-time-only / non-runtime-reachable);
+  - Development-only `braces` advisory in devDependencies;
+  - `StarletteDeprecationWarning`;
+  - Runtime `PRAGMA foreign_keys = 0`;
+  - Broad discovery/CAPTCHA limitations deferred;
+  - Standalone executable packaging deferred;
+  - Cloud/multi-user deferred;
+  - Previous Phase 5 out-of-scope items unless Phase 6 later explicitly selects one through approved scope.
+
+---
+
 ## Project Control Reconciliation & Release Qualification
 
 - **Project Control Final QA Decision (Historical):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (for baseline commit `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
 - **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
 - **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (Project Control accepted the repository-aware QA report; prior QA-environment availability blocker closed; qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md); historical blocked record preserved in [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)).
-- **Next Phase:** `NONE SELECTED` (Phase 6 is not selected / not started).
+- **Next Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`SELECTED / RESEARCH REQUIRED`; research not yet complete, plan not started, implementation not authorized; planning is blocked on completion and Project Control review of research). Selecting Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md).
 - **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
 - **QA Code & Runtime Qualification:** PASS. Backend 178/178 pytest PASS (focused Phase 5 suite 25/25 PASS), Frontend 46/46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 3 SQL queries with Collection context / 2 without; Saved View apply: 0 additional queries; Zero N+1; representative Compare benchmark (200 products / 5,000 snapshots / 5-product compare: best 4.42ms, median 5.14ms, p95 5.42ms, worst 5.42ms; <200ms hard gate PASS, <50ms research target PASS); Phase-4/v1 → Phase-5/v2 isolated bootstrap PASS; version-1 backup rejection PASS; version-2 backup/restore round-trip PASS; no functional regression detected; ADR-003 unchanged; ADR-004 same-version semantics unchanged.
 - **Source-Control Handoff:** QUALIFIED / RECONCILED. Qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.

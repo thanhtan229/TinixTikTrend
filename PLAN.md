@@ -49,9 +49,9 @@ Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Ph
     - **Deterministic 7d analytics tests: PASS.** Deterministic automated test suite (`backend/tests/test_analytics.py`) proves all 10 analytics invariants using isolated in-memory fixtures: exact/near 7d deltas within 4h bounded tolerance, nullability for insufficient history (<164h), bounded tolerance candidate selection, real elapsed time semantics, preservation of zero values, nullability of missing metrics, stale observation suppression, acceleration requiring distinct intervals, exclusion of cumulative-only data from momentum scores, and strict quarantine exclusion across all analytics/trend queries.
     - **Real 7-day field observation: DEFERRED post-release operational validation.** Live 7-day field observation is preserved as a deferred operational validation item, NOT fabricated or claimed as completed evidence. Real SQLite database contains zero synthetic or backdated records.
 
-- [x] **Gate 4: Review and classification of seven high development-dependency findings**
-  - **Status: RESOLVED / CLASSIFIED as non-blocking development-tooling debt.**
-  - **Current State:** Deep audit research confirmed 0 vulnerabilities in production (`npm audit --omit=dev` = 0). All 7 high audit findings originate from `GHSA-vfj7-8cjw-p6xm` on `braces` (AST stack-overflow DoS on untrusted glob inputs), pulled as a transitive dependency of `tailwindcss@3.4.19` (satisfying `^3.4.1` in `package.json`) and `eslint-config-next@15.5.27` in devDependencies. No patched release of `braces` exists in npm registry (3.0.3 is latest). Attack surface is completely unreachable in local runtime (no untrusted user globs processed by CLI dev tools). Classified as non-blocking development-tooling debt awaiting upstream release.
+- [x] **Gate 4: Review and classification of seven high development-dependency findings & current dependency state**
+  - **Status: RESOLVED / CLASSIFIED as non-blocking development-tooling and dependency debt.**
+  - **Historical Baseline & Current Audit State:** Baseline remediation resolved critical dependencies. Under current repository-aware Phase 5 release QA, 1 High `source-map-js` advisory is present in the production dependency graph (`GHSA-68fv-2mgg-jv7q`), reaching via Next/PostCSS/CSS tooling; assessed as build-time-only / not production-runtime reachable with no exploit path demonstrated against the local runtime; classified as non-blocking dependency debt (superseding earlier claims of 0 production vulnerabilities). Additionally, 7 high audit findings from `GHSA-vfj7-8cjw-p6xm` on `braces` remain in devDependencies via `tailwindcss@3.4.19` (satisfying `^3.4.1` in `package.json`) and `eslint-config-next@15.5.27`; attack surface completely unreachable in local runtime; classified as non-blocking development-tooling debt awaiting upstream release.
 
 - [x] **Gate 5: Long-duration and restart/soak validation**
   - **Status: VALIDATED.**
@@ -140,24 +140,26 @@ All release acceptance criteria are now validated under the revised acceptance c
   - **ADR Requirement:** ADR-003 unchanged; ADR-004 semantics unchanged (`portable_backup_compatibility_version` advanced from `"1"` to `"2"`).
   - **Architecture Invariants:** `ARCHITECTURE.md` updated and active.
   - **Compatibility Version:** Advanced to `"2"`; same-version restore semantics strictly enforced.
-  - **Release Qualification:** Previous Windows / local / source-based release qualification remains historical evidence (`4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`); independent Phase 5 release QA attempted but release qualification blocked solely by unavailable checkout in QA environment; retry requires repository-aware QA against revision `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98` or an explicitly reconciled descendant; no product/code blocker identified; no Phase 6 selected.
+  - **Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` for the supported `Windows / local / source-based runtime`. Project Control accepted the repository-aware QA report (decision record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md)); prior QA-environment availability blocker closed (historical record: [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)); qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; historical Phase 4 release baseline remains valid (`4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`); packaging remains deferred; no Phase 6 selected.
 
 - **Implementation Validation Evidence:**
-  - **Backend pytest:** `178 passed`, 1 StarletteDeprecationWarning (100% PASS).
+  - **Backend pytest:** `178 passed` (focused Phase 5 suite `25/25` PASS), 1 StarletteDeprecationWarning (100% PASS).
   - **Frontend Vitest:** `46 passed` across 8 test suites (100% PASS).
   - **TypeScript:** `npx tsc --noEmit` PASS (clean).
   - **Lint:** `npm run lint` (`eslint src`) PASS (clean).
   - **Production build:** `npm run build` (`next build`) PASS (compiled successfully, 4 static/dynamic routes generated).
   - **Healthcheck:** `healthcheck.bat` PASS (FastAPI :8000 status: ok, database: connected, region: VN; Next.js :3000 HTTP 200 OK).
   - **SQLite Integrity & Foreign Keys:** `PRAGMA integrity_check` = `[('ok',)]`; `PRAGMA foreign_key_check` = `[]` clean.
-  - **No Blocker:** Zero Phase 5 blockers remain.
+  - **No Blocker:** Zero Phase 5 blockers remain. Prior QA environment availability blocker closed by repository-aware QA.
 
 - **Query Budgets & Performance Evidence:**
   - **Collection member list query budget:** Exactly `2` SQL queries in accepted evidence (Zero N+1).
   - **Compare query budget:** Exactly `3` SQL queries with collection context / `2` without collection context (Zero N+1, single bulk HTTP request).
-  - **Compare benchmark (200 products / 5,000 snapshots):**
-    - Median: `5.47ms`
-    - p95/Max: `5.62ms`
+  - **Compare benchmark (200 products / 5,000 snapshots / 5-product compare):**
+    - Best: `4.42ms`
+    - Median: `5.14ms`
+    - p95: `5.42ms`
+    - Worst: `5.42ms`
     - Hard performance gate (`<200ms`): PASS
     - Research performance target (`<50ms`): PASS
   - **Saved View application:** Exactly `0` additional SavedView query/fetch path beyond the underlying table query.
@@ -187,10 +189,14 @@ All release acceptance criteria are now validated under the revised acceptance c
   - Operator documentation in `README.md` updated with v2 backup/restore boundary and Opportunity Workspace usage.
 
 - **Preserved Accepted Non-Blocking Technical Debt & Deviations:**
+  - 1 High `source-map-js` advisory in the production dependency graph (`GHSA-68fv-2mgg-jv7q`): reaches dependency graph through Next/PostCSS/CSS-build tooling; QA found no known path from untrusted runtime input to the vulnerable behavior; presently assessed as build-time-only / not production-runtime reachable; no functional or security exploit was demonstrated against the supported local runtime; classified as non-blocking dependency/security debt for this release (earlier claims of 0 production vulnerabilities superseded).
   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
   - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).
   - Runtime connection `PRAGMA foreign_keys = 0` (`OFF`) preserved for cross-phase operational stability.
   - Scratch-file cleanup deviation: five untracked conversational scratch `.txt` files were deleted during implementation workspace cleanup; classification: unrelated cleanup deviation, zero production/runtime/test/config impact, no known release impact, no reconstruction required, no further remediation required.
+  - QA evidence-quality notes:
+    1. No explicit manual keyboard/accessibility checklist was supplied in final QA evidence (automated UI/acceptance coverage passed; no accessibility regression demonstrated; classified as evidence-quality gap, not release blocker).
+    2. QA was described as observational, but live API checks created and then deleted temporary Collection and Saved View records (no source modification; no destructive restore; zero release-state impact; wording correction only).
 
 - **Preserved Explicit Deferred & Out-of-Scope Items:**
   - Tags and arbitrary product labels.
@@ -218,18 +224,23 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Project Control Final QA Decision (Historical):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (for baseline commit `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
 - **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
-- **Phase 5 Source-Release Qualification:** `BLOCKED / QA ENVIRONMENT UNAVAILABLE`. Independent release QA attempted, but release qualification is blocked solely by unavailable checkout in QA execution environment (lacking repository checkout and `.git` state). No product/code blocker identified; no Phase 5 regression demonstrated; no code remediation required; qualified revision from QA run: `NONE`; target revision remains `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; retry requires repository-aware QA against revision `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98` or an explicitly reconciled descendant. Record: [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md).
+- **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (Project Control accepted the repository-aware QA report; prior QA-environment availability blocker closed; qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md); historical blocked record preserved in [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)).
 - **Next Phase:** `NONE SELECTED` (Phase 6 is not selected / not started).
 - **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
-- **QA Code & Runtime Qualification:** Backend 178 pytest PASS, Frontend 46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean.
-- **Source-Control Handoff:** In progress for Phase 5 QA retry; target revision `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.
-- **Supported Release Boundary:** `Windows / local / source-based runtime`.
-- **Remote Publication:** Remote publication is a separate explicitly authorized action; target revision has not been pushed to `origin/main`.
+- **QA Code & Runtime Qualification:** PASS. Backend 178/178 pytest PASS (focused Phase 5 suite 25/25 PASS), Frontend 46/46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 3 SQL queries with Collection context / 2 without; Saved View apply: 0 additional queries; Zero N+1; representative Compare benchmark (200 products / 5,000 snapshots / 5-product compare: best 4.42ms, median 5.14ms, p95 5.42ms, worst 5.42ms; <200ms hard gate PASS, <50ms research target PASS); Phase-4/v1 → Phase-5/v2 isolated bootstrap PASS; version-1 backup rejection PASS; version-2 backup/restore round-trip PASS; no functional regression detected; ADR-003 unchanged; ADR-004 same-version semantics unchanged.
+- **Source-Control Handoff:** QUALIFIED / RECONCILED. Qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.
+- **Supported Release Boundary:** `Windows / local / source-based runtime`. Standalone executable/installer packaging remains deferred.
+- **Release Blockers:** NONE. Prior QA-environment availability blocker closed by repository-aware QA. Zero product/code/architecture blockers exist.
+- **Remote Publication:** Remote publication is a separate explicitly authorized action; target revisions have not been pushed to `origin/main`.
 - **Preserved Accepted Non-Blocking Debt:**
-  - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase operational stability.
-  - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies.
+  - 1 High `source-map-js` advisory in the production dependency graph (`GHSA-68fv-2mgg-jv7q`): reaches dependency graph through Next/PostCSS/CSS-build tooling; QA found no known path from untrusted runtime input to the vulnerable behavior; presently assessed as build-time-only / not production-runtime reachable; no functional or security exploit was demonstrated against the supported local runtime; classified as non-blocking dependency/security debt for this release (earlier claims of 0 production vulnerabilities superseded).
+  - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
   - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).
+  - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase operational stability.
   - Scratch-file cleanup deviation (five untracked `.txt` scratch files cleaned up; no code/test/config impact).
+  - QA evidence-quality notes:
+    1. No explicit manual keyboard/accessibility checklist was supplied in final QA evidence (automated UI/acceptance coverage passed; no accessibility regression demonstrated; classified as evidence-quality gap, not release blocker).
+    2. QA was described as observational, but live API checks created and then deleted temporary Collection and Saved View records (no source modification; no destructive restore; zero release-state impact; wording correction only).
 - **Preserved Accepted Deferred Scope:**
   - Broad automatic discovery / CAPTCHA bypass deferred.
   - Real 7-day field observation deferred.

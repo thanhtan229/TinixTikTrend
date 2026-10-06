@@ -1,6 +1,6 @@
 # Production review remediation plan
 
-Updated: 2026-10-05. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, release qualification, and Phase 5 plan approval.
+Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, Phase 5 completion, and Phase 5 release QA qualification state.
 
 ## Baseline Validation: PASS
 
@@ -140,7 +140,7 @@ All release acceptance criteria are now validated under the revised acceptance c
   - **ADR Requirement:** ADR-003 unchanged; ADR-004 semantics unchanged (`portable_backup_compatibility_version` advanced from `"1"` to `"2"`).
   - **Architecture Invariants:** `ARCHITECTURE.md` updated and active.
   - **Compatibility Version:** Advanced to `"2"`; same-version restore semantics strictly enforced.
-  - **Release Qualification:** Previous Windows / local / source-based release qualification remains historical evidence (`4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`); Phase 5 source changes require separate QA/release qualification if Project Control later requests a new release-ready decision.
+  - **Release Qualification:** Previous Windows / local / source-based release qualification remains historical evidence (`4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`); independent Phase 5 release QA attempted but release qualification blocked solely by unavailable checkout in QA environment; retry requires repository-aware QA against revision `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98` or an explicitly reconciled descendant; no product/code blocker identified; no Phase 6 selected.
 
 - **Implementation Validation Evidence:**
   - **Backend pytest:** `178 passed`, 1 StarletteDeprecationWarning (100% PASS).
@@ -217,12 +217,14 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 - **Project Control Final QA Decision (Historical):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (for baseline commit `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
-- **Phase 5 Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing).
+- **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
+- **Phase 5 Source-Release Qualification:** `BLOCKED / QA ENVIRONMENT UNAVAILABLE`. Independent release QA attempted, but release qualification is blocked solely by unavailable checkout in QA execution environment (lacking repository checkout and `.git` state). No product/code blocker identified; no Phase 5 regression demonstrated; no code remediation required; qualified revision from QA run: `NONE`; target revision remains `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; retry requires repository-aware QA against revision `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98` or an explicitly reconciled descendant. Record: [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md).
+- **Next Phase:** `NONE SELECTED` (Phase 6 is not selected / not started).
 - **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
 - **QA Code & Runtime Qualification:** Backend 178 pytest PASS, Frontend 46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean.
-- **Source-Control Handoff:** In progress for Phase 5 completion.
+- **Source-Control Handoff:** In progress for Phase 5 QA retry; target revision `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.
 - **Supported Release Boundary:** `Windows / local / source-based runtime`.
-- **Remote Publication:** Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`.
+- **Remote Publication:** Remote publication is a separate explicitly authorized action; target revision has not been pushed to `origin/main`.
 - **Preserved Accepted Non-Blocking Debt:**
   - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase operational stability.
   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies.

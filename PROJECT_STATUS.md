@@ -1,8 +1,8 @@
 # Project status
 
-Updated: 2026-10-06 13:20 UTC+7. Phase: Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare (COMPLETE / ACCEPTED).
+Updated: 2026-10-06 14:15 UTC+7. Phase: Phase 5 — Opportunity Workspace: Collections, Saved Views & Product Compare (COMPLETE / ACCEPTED).
 
-Historical release qualification remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the supported **Windows / local / source-based runtime** (qualified source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`). Phase 4 status remains **COMPLETE / ACCEPTED** with all acceptance criteria (P4-AC-01 through P4-AC-35) verified. Phase 5 status is now **COMPLETE / ACCEPTED** with all 36 authoritative acceptance criteria (**`P5-AC-01` through `P5-AC-36`**) verified and accepted under authoritative plan [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md). Phase 5 delivers Collections, Saved Views, and transient Product Compare as an additive decision-organization workspace; Watchlist remains the sole monitoring authority; portable compatibility version is advanced to `"2"` with same-version restore strictly enforced; in-place additive bootstrap preserves all Phase 1–4 data; query budgets (Zero N+1) and sub-200ms compare benchmarks are verified. Full test suites pass cleanly (**178 backend pytest**, **46 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Source changes require separate QA/release qualification if Project Control later requests a new release-ready decision. Remote publication is a separate explicitly authorized action; qualified revision has not been pushed to `origin/main`. No Phase 5 blockers exist. No executable has been packaged.
+Historical release qualification remains: **READY WITH DOCUMENTED NON-BLOCKING ISSUES** for the supported **Windows / local / source-based runtime** (qualified historical source revision: `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`). Phase 4 status remains **COMPLETE / ACCEPTED** with all acceptance criteria (P4-AC-01 through P4-AC-35) verified. Phase 5 implementation status remains **COMPLETE / ACCEPTED** with all 36 authoritative acceptance criteria (**`P5-AC-01` through `P5-AC-36`**) verified and accepted under authoritative plan [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md); Phase 5 implementation acceptance remains valid. Phase 5 source-release qualification is **BLOCKED / QA ENVIRONMENT UNAVAILABLE** solely because the independent QA execution environment lacked the actual repository checkout and project `.git` state. No accepted-phase regression was demonstrated; no code remediation is required at this time; qualified Phase 5 revision from that QA run is `NONE` (target revision remains `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`); and the Phase 5 revision is not yet independently release-qualified. Phase 5 delivers Collections, Saved Views, and transient Product Compare as an additive decision-organization workspace; Watchlist remains the sole monitoring authority; portable compatibility version is advanced to `"2"` with same-version restore strictly enforced; in-place additive bootstrap preserves all Phase 1–4 data; query budgets (Zero N+1) and sub-200ms compare benchmarks are verified. Full test suites pass cleanly (**178 backend pytest**, **46 frontend Vitest**), TypeScript typecheck clean, ESLint clean, Next.js production build clean, healthcheck clean, and live SQLite database integrity verified. Release boundary intended for qualification remains Windows / local / source-based runtime. Remote publication is a separate explicitly authorized action; target revision has not been pushed to `origin/main`. No next phase selected. No executable has been packaged.
 
 
 ## Implemented and validated
@@ -77,18 +77,20 @@ Historical release qualification remains: **READY WITH DOCUMENTED NON-BLOCKING I
 
 ## Project Control reconciliation
 
-- **Project Control Final QA Decision (Historical):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (previous release qualification remains valid historical baseline for `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
+- **Historical Release Qualification (Phase 4):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (previous release qualification remains valid historical baseline for `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
 - **Phase 1 release remediation:** `COMPLETE WITH DEFERRED ITEMS`.
 - **Phase 2 — Trend Quality & Decision Support:** `COMPLETE / ACCEPTED`.
 - **Phase 3 — Monitoring, Watchlists & Alerts:** `COMPLETE / ACCEPTED`.
 - **Phase 4 — Reporting & Productization:** `COMPLETE / ACCEPTED` (all criteria P4-AC-01 through P4-AC-35 accepted).
-- **Phase 5 — Opportunity Workspace:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), all criteria `P5-AC-01` through `P5-AC-36` accepted).
+- **Phase 5 — Opportunity Workspace Implementation:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), all criteria `P5-AC-01` through `P5-AC-36` accepted; implementation acceptance remains valid).
+- **Phase 5 Source-Release Qualification:** `BLOCKED / QA ENVIRONMENT UNAVAILABLE` (QA execution environment lacked actual repository checkout and `.git` state; no accepted-phase regression demonstrated; no code remediation required at this time; qualified revision from that QA run: `NONE`; target revision remains `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; Phase 5 revision is not yet independently release-qualified; record: [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)).
 - **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
-- **Repository QA & Runtime Qualification:** Backend 178 pytest PASS, Frontend 46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, live healthcheck PASS, SQLite integrity and foreign-key checks PASS.
-- **Source-Control Handoff:** Complete for Phase 5.
-- **Supported Release Boundary:** `Windows / local / source-based runtime`.
-- **Release Blockers:** None.
-- **Remote Publication:** Qualified revision has not been pushed to `origin/main`; remote publication is a separate explicitly authorized action.
+- **Repository QA & Runtime Qualification:** Backend 178 pytest PASS, Frontend 46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, live healthcheck PASS, SQLite integrity and foreign-key checks PASS (verified during implementation; independent release QA blocked on execution environment availability).
+- **Source-Control Handoff:** In progress for Phase 5 QA retry; target revision `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.
+- **Supported Release Boundary:** `Windows / local / source-based runtime` (intended boundary for qualification).
+- **Release Blockers:** Execution-environment availability blocker only for independent QA release qualification. No product/code/architecture blockers exist.
+- **Remote Publication:** Target revision has not been pushed to `origin/main`; remote publication is a separate explicitly authorized action.
+- **Next Phase:** None selected / none started (Phase 6 is not selected).
 - **Preserved Accepted Non-Blocking Debt & Deviations:**
   - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase stability.
   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies.

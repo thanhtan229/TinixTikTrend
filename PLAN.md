@@ -1,6 +1,6 @@
 # Production review remediation plan
 
-Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, Phase 5 completion and release qualification, and Phase 6 selection & research gate.
+Updated: 2026-10-06. Scope: C1, H1–H8, M1–M3 in FINAL_REVIEW.md, Phase 2, Phase 3, Phase 4, Phase 5 completion and release qualification, and Phase 6 research gate reconciliation & ADR-005 gate.
 
 ## Baseline Validation: PASS
 
@@ -219,44 +219,87 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 ---
 
-## Phase 6 — Affiliate Economics & Profitability Intelligence: SELECTED / RESEARCH REQUIRED
+## Phase 6 — Affiliate Economics & Profitability Intelligence: SELECTED / RESEARCH COMPLETE
 
 - **Decision State:**
-  - **Phase 6 Status:** `SELECTED / RESEARCH REQUIRED`
+  - **Phase 6 Status:** `SELECTED / RESEARCH COMPLETE`
   - **Phase Name:** `Affiliate Economics & Profitability Intelligence`
   - **Selection Record:** [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md)
-  - **Selection Intent:** Extend the current decision workflow from `organize → review → compare → decide` toward `evaluate economics → compare commercial attractiveness → prioritize affiliate opportunities` without changing existing Trend Score, Watchlist monitoring semantics, crawler behavior, or Phase 5 Collection/Compare authority.
-  - **Research Gate:** `OPEN / RESEARCH REQUIRED`
-  - **Research Status:** `NOT YET COMPLETE`
+  - **Authoritative Selection Commit:** `d97f00f7819e778954a76abe3605e1442ea4155d`
+  - **Superseded Identifier Discrepancy:** Previously reported identifier `d97f00f9a25b16f398f658be424b94f1e58286ad` is superseded and corrected to `d97f00f7819e778954a76abe3605e1442ea4155d`.
+  - **Research Gate:** `CLOSED / ACCEPTED`
+  - **Research Artifact:** [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md)
+  - **Research Readiness:** `RESEARCH READY FOR PROJECT CONTROL`
+  - **Research Acceptance Record:** [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md)
+  - **Product Recommendation:** `RECOMMEND WITH REVISED SCOPE — ACCEPTED`
+  - **Selected MVP Direction:** `VND-only, manual-first Product Economics Scenarios`
+  - **Architecture Gate:** `ADR-005 REQUIRED BEFORE PHASE 6 IMPLEMENTATION-PLAN APPROVAL`
   - **Phase Plan Status:** `NOT STARTED`
   - **Implementation Status:** `NOT AUTHORIZED`
   - **Acceptance Criteria:** `NONE DEFINED YET` (no Phase 6 acceptance criteria exist yet)
-  - **Planning Rule:** `Phase 6 planning is blocked on completion and Project Control review of research.`
-  - **Research Location:** Substantial research should occur in `01 — Architecture & Repo Research`.
+  - **Planning Rule:** Planning may begin only after the required architecture decision (`ADR-005`) is drafted and reviewed as directed by Project Control.
 
-- **Research Gate Rationale & Expected Questions:**
-  Research must determine at least:
-  - Authoritative commission/affiliate data sources available to this local product;
-  - VN-specific commission/fee semantics where relevant;
-  - Whether commission data can be reliably extracted, entered manually, or both;
-  - Revenue/profitability terminology and formulas;
-  - Distinction between product selling price, gross merchandise value/revenue proxies, affiliate commission rate, estimated affiliate earnings, user-entered product/sample/content/ad costs, and contribution/profit estimates;
-  - Missing/null/estimated economics and false-precision avoidance;
-  - Time-varying price/commission semantics;
-  - Whether economics state belongs to Product, CollectionItem, or a separate scenario/assumption entity;
-  - Whether multiple economic scenarios per Product are required;
-  - Persistence/history requirements;
-  - Backup/restore compatibility consequences;
-  - Schema/bootstrap implications;
-  - Effect on current compatibility version `"2"`;
-  - Integration with Collections, Saved Views and Compare;
-  - Whether Compare should display economics or a separate economics comparison surface is preferable;
-  - Performance/query constraints;
-  - Frontend UX;
-  - Security/privacy implications;
-  - External-network/runtime dependency implications;
-  - ADR requirement;
-  - Explicit out-of-scope boundaries.
+- **Accepted Revised Scope & Architectural Constraints:**
+  - **MVP Product Direction:** VND-only, manual-first Product Economics Scenarios.
+  - **Economics Isolation:** Economics remains strictly separate from Phase 2 Trend Score, trend evidence, and trend confidence. No blended trend-profit score.
+  - **Attribution Boundary:** Product sold count and sales velocity must never be treated as affiliate attribution or creator earnings. Prohibited formula: `sales_velocity × commission_per_order` as "estimated affiliate earnings".
+  - **Commission Authority:** Existing `ProductSnapshot.commission_rate` is market observation data only; it is not automatic economics authority. Authoritative rate is solely the explicit scenario assumption.
+  - **Multiple Scenarios:** One `Product` may have multiple named economics scenarios.
+  - **Default Invariants:** Zero scenarios means zero defaults. Whenever scenarios exist for a Product, exactly one committed default exists. First scenario auto-defaults. Default switching is atomic. Deleting the default while other scenarios remain deterministically promotes the oldest remaining scenario by `(created_at, id)`.
+  - **Currency & Persistence:** VND-only; no multi-currency or FX engine. Scenario assumptions use integer whole-VND money values and integer basis points for commission (`10,000 bps = 100%`).
+  - **Cost Structure:** Fixed campaign costs are sample cost, content production cost, and planned promotion spend. Variable cost per order remains separate. Unknown/null is not zero (missing values do not silently default to 0).
+  - **Observed Price Proxy:** Observed Product price can only be explicitly copied and frozen as a labeled proxy with timestamp; it is never dynamically linked to fluctuating crawler observations.
+  - **Calculation Authority:** Derived economics are calculated by one backend authority and are not persisted. No financial calculation or rounding authority in frontend.
+  - **Workspace & Export Isolation:** Saved View V1 schemas remain frozen and unchanged. No economics alerts in MVP. Economics CSV is deferred.
+  - **External Scope Boundary:** No official Affiliate API/OAuth integration in MVP; no private Creator Center scraping; no CAPTCHA bypass; no new third-party dependencies.
+
+- **Accepted Numeric & Formula Policy:**
+  - **Persisted Assumptions:**
+    - Money = whole-VND integer;
+    - Commission = integer basis points (`10,000 bps = 100%`).
+  - **Backend Calculation Authority:** Derived formulas remain backend-authoritative.
+  - **Key Derived Concepts:**
+    - Estimated commission per attributable order: `commission_base_vnd × (commission_bps / 10000)`
+    - Fixed campaign cost: `sample_cost_vnd + content_cost_vnd + ad_spend_vnd` (sum of non-null components)
+    - Contribution per attributable order: `estimated_commission_per_order - variable_cost_per_order`
+    - Break-even attributable orders: `ceil(fixed_campaign_cost / contribution_per_order)` when contribution > 0
+    - Optional expected economics: Expected commission, expected contribution, and return on cost computed only when explicit user `expected_attributable_orders` exists.
+  - **Prohibitions:** No sales-velocity earnings proxy; no attributable-order inference; no frontend financial calculation authority.
+
+- **Persistence & Compatibility Direction:**
+  - **Required Table:** Exactly one proposed table: `economics_scenarios`.
+  - **No Additional MVP Tables:** No tables for cost line items, economics history, commission observations, formula definitions, or persisted derived results.
+  - **Backup Compatibility Advance:** If implemented, portable backup compatibility must advance `"2" → "3"` under unchanged ADR-004 same-version restore semantics.
+  - **Compatibility Rules:** v2 backup not silently restorable by v3 application; no cross-version migration in Phase 6; fresh v3 backup required after successful upgrade; additive `Base.metadata.create_all()` + dynamic schema verification pattern expected to be reused. Compatibility code is not modified in this reconciliation.
+
+- **Performance & Query Planning Constraints:**
+  - **Candidate Query Budgets:**
+    - Product scenario list/economics: `<= 1` scenario query.
+    - Collection member list with economics: `<= 3` SQL queries total.
+    - Compare with economics (no Collection context): `<= 3` SQL queries total.
+    - Compare with economics and Collection context: `<= 4` SQL queries total.
+    - Zero N+1 strictly enforced.
+  - **Regression Ceiling Recommendation:** `< 200ms` on relevant 200-product / 5,000-snapshot representative paths. `< 50ms` remains an optimization/research target, not yet a hard gate unless planning later explicitly adopts it.
+
+- **Architecture Gate: ADR-005 Required:**
+  - **Status:** `ADR-005 REQUIRED BEFORE PHASE 6 IMPLEMENTATION-PLAN APPROVAL`
+  - **Proposed Title:** `ADR-005 — Affiliate economics assumptions, provenance, numeric semantics, and calculation authority`
+  - **Rule:** ADR-005 must be reviewed and accepted by Project Control before the Phase 6 implementation plan is approved.
+  - **Expected Decision Scope:**
+    - Market evidence vs. user assumptions vs. derived economics separation;
+    - Prohibition of sold-count/sales-velocity attribution;
+    - Manual-first source policy;
+    - Observed-price frozen-proxy semantics;
+    - VND-only MVP;
+    - Integer VND + basis-points persistence;
+    - Backend calculation and rounding authority;
+    - Fixed vs. variable costs;
+    - Null ≠ zero semantics;
+    - Multiple Product-scoped scenarios with exactly-one-default invariant;
+    - Trend Score, Watchlist, alert, and crawler isolation;
+    - Portable backup compatibility advance `"2" → "3"`;
+    - Future official Affiliate API source and override precedence.
+  - *(ADR-005 is not created in this reconciliation.)*
 
 - **Preserved Architecture Boundaries:**
   - `Watchlist = monitoring`;
@@ -269,7 +312,7 @@ All release acceptance criteria are now validated under the revised acceptance c
   - Phase 5 Saved View contracts;
   - Transient Compare semantics;
   - Shared Compare `as_of_utc`;
-  - Compatibility version `"2"` until research/planning explicitly determines otherwise.
+  - Compatibility version `"2"` until Phase 6 implementation explicitly advances it to `"3"`.
 
 - **Preserved Debt & Deferred State:**
   - 1 High `source-map-js` advisory in the production dependency graph (build-time-only / non-runtime-reachable);
@@ -289,7 +332,7 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
 - **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
 - **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (Project Control accepted the repository-aware QA report; prior QA-environment availability blocker closed; qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md); historical blocked record preserved in [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)).
-- **Next Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`SELECTED / RESEARCH REQUIRED`; research not yet complete, plan not started, implementation not authorized; planning is blocked on completion and Project Control review of research). Selecting Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md).
+- **Next Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`SELECTED / RESEARCH COMPLETE`; research `CLOSED / ACCEPTED`, product direction `RECOMMEND WITH REVISED SCOPE — ACCEPTED`, plan `NOT STARTED`, implementation `NOT AUTHORIZED`, required next architecture gate: `ADR-005 REQUIRED BEFORE PHASE 6 IMPLEMENTATION-PLAN APPROVAL`, authoritative actual Phase 6 selection HEAD commit: `d97f00f7819e778954a76abe3605e1442ea4155d`; previously reported identifier `d97f00f9a25b16f398f658be424b94f1e58286ad` superseded; planning may begin only after ADR-005 is drafted/reviewed as directed by Project Control). Selecting and researching Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md); research acceptance record: [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md); research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md).
 - **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` advanced to `"2"`); `ARCHITECTURE.md` updated; no new ADR required.
 - **QA Code & Runtime Qualification:** PASS. Backend 178/178 pytest PASS (focused Phase 5 suite 25/25 PASS), Frontend 46/46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 3 SQL queries with Collection context / 2 without; Saved View apply: 0 additional queries; Zero N+1; representative Compare benchmark (200 products / 5,000 snapshots / 5-product compare: best 4.42ms, median 5.14ms, p95 5.42ms, worst 5.42ms; <200ms hard gate PASS, <50ms research target PASS); Phase-4/v1 → Phase-5/v2 isolated bootstrap PASS; version-1 backup rejection PASS; version-2 backup/restore round-trip PASS; no functional regression detected; ADR-003 unchanged; ADR-004 same-version semantics unchanged.
 - **Source-Control Handoff:** QUALIFIED / RECONCILED. Qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.

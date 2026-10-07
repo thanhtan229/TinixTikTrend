@@ -237,6 +237,7 @@ export interface CollectionItem {
   product?: Product | null;
   analysis?: TrendMetrics | null;
   is_watched?: boolean;
+  default_economics?: EconomicsScenario | null;
 }
 
 export interface TrendsSavedViewPayload {
@@ -309,11 +310,73 @@ export interface ComparedProduct {
 
   recent_alert_count_7d: number;
   latest_alert_at?: string | null;
+
+  // Phase 6: Default economics scenario
+  default_economics?: EconomicsScenario | null;
 }
 
 export interface CompareResponse {
   as_of_utc: string;
   collection_id?: number | null;
   products: ComparedProduct[];
+}
+
+// Phase 6: Affiliate Economics & Profitability Intelligence Types
+export interface DerivedEconomics {
+  commission_per_order_vnd: number | null;
+  fixed_campaign_cost_vnd: number | null;
+  contribution_per_order_vnd: number | null;
+  break_even_orders: number | null;
+  expected_commission_vnd: number | null;
+  expected_variable_cost_vnd: number | null;
+  expected_contribution_vnd: number | null;
+  return_on_cost_ratio: number | null;
+}
+
+export interface EconomicsScenario {
+  id: number;
+  product_id: number;
+  name: string;
+  commission_rate_bps: number | null;
+  commission_base_vnd: number | null;
+  commission_base_source: "user_entered" | "observed_price_proxy";
+  commission_base_observed_at: string | null;
+  sample_cost_vnd: number | null;
+  content_cost_vnd: number | null;
+  promotion_cost_vnd: number | null;
+  variable_cost_per_attributed_order_vnd: number | null;
+  expected_attributed_orders: number | null;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+  derived: DerivedEconomics;
+}
+
+export interface EconomicsScenarioCreate {
+  name: string;
+  commission_rate_bps?: number | null;
+  commission_base_vnd?: number | null;
+  use_observed_price?: boolean;
+  sample_cost_vnd?: number | null;
+  content_cost_vnd?: number | null;
+  promotion_cost_vnd?: number | null;
+  variable_cost_per_attributed_order_vnd?: number | null;
+  expected_attributed_orders?: number | null;
+  is_default?: boolean;
+}
+
+export interface EconomicsScenarioUpdate {
+  name?: string;
+  commission_rate_bps?: number | null;
+  commission_base_vnd?: number | null;
+  sample_cost_vnd?: number | null;
+  content_cost_vnd?: number | null;
+  promotion_cost_vnd?: number | null;
+  variable_cost_per_attributed_order_vnd?: number | null;
+  expected_attributed_orders?: number | null;
+}
+
+export interface EconomicsScenarioDuplicate {
+  name: string;
 }
 

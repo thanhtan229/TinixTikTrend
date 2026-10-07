@@ -11,7 +11,7 @@ import {
   updateCollectionItem,
   removeProductFromCollection,
 } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatDate } from "@/lib/utils";
 import {
   Folder,
   FolderPlus,
@@ -338,6 +338,9 @@ export const CollectionsWorkspace: React.FC<CollectionsWorkspaceProps> = ({
                         <th className="py-2.5 px-3">Sản phẩm</th>
                         <th className="py-2.5 px-3">Watch</th>
                         <th className="py-2.5 px-3">Trạng thái đánh giá</th>
+                        <th className="py-2.5 px-3">Hoa hồng/đơn</th>
+                        <th className="py-2.5 px-3">Đóng góp/đơn</th>
+                        <th className="py-2.5 px-3">Đơn hòa vốn</th>
                         <th className="py-2.5 px-3">Ghi chú quyết định</th>
                         <th className="py-2.5 px-3 text-right">Thao tác</th>
                       </tr>
@@ -415,6 +418,41 @@ export const CollectionsWorkspace: React.FC<CollectionsWorkspaceProps> = ({
                                 <option value="candidate">Ứng viên</option>
                                 <option value="rejected">Đã loại</option>
                               </select>
+                            </td>
+
+                            {/* Economics Summary (Phase 6) */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {item.default_economics?.derived?.commission_per_order_vnd != null ? (
+                                <div className="font-semibold text-emerald-400">
+                                  {formatCurrency(item.default_economics.derived.commission_per_order_vnd)}
+                                </div>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {item.default_economics?.derived?.contribution_per_order_vnd != null ? (
+                                <div
+                                  className={`font-semibold ${
+                                    item.default_economics.derived.contribution_per_order_vnd >= 0
+                                      ? "text-emerald-400"
+                                      : "text-rose-400"
+                                  }`}
+                                >
+                                  {formatCurrency(item.default_economics.derived.contribution_per_order_vnd)}
+                                </div>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {item.default_economics?.derived?.break_even_orders != null ? (
+                                <div className="font-semibold text-slate-200">
+                                  {formatNumber(item.default_economics.derived.break_even_orders)} đơn
+                                </div>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
                             </td>
 
                             {/* Notes with explicit Save button */}

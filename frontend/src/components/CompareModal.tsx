@@ -17,6 +17,8 @@ import {
   Clock,
   Bell,
   TrendingUp,
+  Coins,
+  Calculator,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -383,6 +385,165 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         )}
                       </td>
                     ))}
+                  </tr>
+
+                  {/* Section Divider: Economics Header */}
+                  <tr className="border-b border-slate-800 bg-slate-950">
+                    <td colSpan={data.products.length + 1} className="py-2.5 px-3">
+                      <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
+                        <Calculator className="h-4 w-4" />
+                        <span>Kinh tế Affiliate (Kịch bản mặc định)</span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Row 13: Scenario Name */}
+                  <tr className="border-b border-slate-800/60">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Kịch bản mặc định
+                    </td>
+                    {data.products.map((p) => (
+                      <td key={p.product_id} className="p-3 text-slate-200 font-medium">
+                        {p.default_economics ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            <span>{p.default_economics.name}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">—</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Row 14: Commission Rate */}
+                  <tr className="border-b border-slate-800/60 bg-slate-900/20">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Tỷ lệ hoa hồng
+                    </td>
+                    {data.products.map((p) => (
+                      <td key={p.product_id} className="p-3 font-semibold text-rose-400">
+                        {p.default_economics?.commission_rate_bps != null
+                          ? `${(p.default_economics.commission_rate_bps / 100).toFixed(2)}%`
+                          : "—"}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Row 15: Commission Base & Source */}
+                  <tr className="border-b border-slate-800/60">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Cơ sở tính &amp; Nguồn
+                    </td>
+                    {data.products.map((p) => (
+                      <td key={p.product_id} className="p-3">
+                        {p.default_economics?.commission_base_vnd != null ? (
+                          <div>
+                            <div className="font-semibold text-slate-200">
+                              {formatCurrency(p.default_economics.commission_base_vnd)}
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              {p.default_economics.commission_base_source === "observed_price_proxy"
+                                ? "Giá sàn quan sát"
+                                : "Giả định người dùng"}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500">—</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Row 16: Commission per Order */}
+                  <tr className="border-b border-slate-800/60 bg-slate-900/20">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Hoa hồng ước tính/đơn
+                    </td>
+                    {data.products.map((p) => (
+                      <td key={p.product_id} className="p-3 font-semibold text-emerald-400">
+                        {p.default_economics?.derived?.commission_per_order_vnd != null
+                          ? formatCurrency(p.default_economics.derived.commission_per_order_vnd)
+                          : "—"}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Row 17: Contribution per Order */}
+                  <tr className="border-b border-slate-800/60">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Lợi nhuận đóng góp/đơn
+                    </td>
+                    {data.products.map((p) => {
+                      const contrib = p.default_economics?.derived?.contribution_per_order_vnd;
+                      return (
+                        <td key={p.product_id} className="p-3">
+                          {contrib != null ? (
+                            <span className={`font-semibold ${contrib >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              {formatCurrency(contrib)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Row 18: Break-even Orders */}
+                  <tr className="border-b border-slate-800/60 bg-slate-900/20">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Điểm hòa vốn chiến dịch
+                    </td>
+                    {data.products.map((p) => (
+                      <td key={p.product_id} className="p-3 font-semibold text-cyan-400">
+                        {p.default_economics?.derived?.break_even_orders != null
+                          ? `${formatNumber(p.default_economics.derived.break_even_orders)} đơn`
+                          : "—"}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Row 19: Expected Orders & Net Profit */}
+                  <tr className="border-b border-slate-800/60">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Đơn dự kiến &amp; Lợi nhuận ròng
+                    </td>
+                    {data.products.map((p) => {
+                      const orders = p.default_economics?.expected_attributed_orders;
+                      const expContrib = p.default_economics?.derived?.expected_contribution_vnd;
+                      return (
+                        <td key={p.product_id} className="p-3">
+                          {orders != null ? (
+                            <div>
+                              <div className="font-semibold text-slate-200">
+                                {formatNumber(orders)} đơn
+                              </div>
+                              <div className={`text-[11px] mt-0.5 ${expContrib != null && expContrib >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                {expContrib != null ? formatCurrency(expContrib) : "—"}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Row 20: Return on Cost Ratio */}
+                  <tr className="border-b border-slate-800 bg-slate-900/30">
+                    <td className="p-3 font-semibold text-slate-400 bg-slate-950/40">
+                      Tỷ suất lợi nhuận (Return on Cost)
+                    </td>
+                    {data.products.map((p) => {
+                      const roc = p.default_economics?.derived?.return_on_cost_ratio;
+                      return (
+                        <td key={p.product_id} className="p-3 font-semibold text-amber-400">
+                          {roc != null ? `${(roc * 100).toFixed(1)}%` : "—"}
+                        </td>
+                      );
+                    })}
                   </tr>
                 </tbody>
               </table>

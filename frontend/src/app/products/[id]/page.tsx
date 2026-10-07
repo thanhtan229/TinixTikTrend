@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { ProductHistory } from "@/components/ProductHistory";
 import { AddToCollectionModal } from "@/components/AddToCollectionModal";
+import { ProductEconomicsSection } from "@/components/ProductEconomicsSection";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -350,6 +351,12 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
+
+      <ProductEconomicsSection
+        productId={product.id}
+        productTitle={product.title}
+        latestPriceVnd={deltas.latest_price != null ? Math.round(deltas.latest_price) : null}
+      />
 
       <ProductHistory snapshots={product.snapshots || []} productId={product.id} />
 

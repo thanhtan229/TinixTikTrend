@@ -126,14 +126,17 @@ API crawler/status chỉ trả local_session_status = missing/available/invalid;
    - Giá trị tiền tệ được lưu trữ dưới dạng số nguyên VND (integer whole-VND, không có đơn vị thập phân), giới hạn $0 \le \text{money} \le 10^{11}$.
    - Tỷ lệ hoa hồng được lưu trữ dưới dạng điểm cơ bản nguyên (`bps`, $0 \le \text{bps} \le 10,000$, 10,000 bps = 100%). Từ chối phân số thập phân của bps (sub-bps rejection).
    - Bảo toàn giá trị thiếu (`null ≠ 0`): Các trường giả định chưa nhập giữ nguyên `null`, tuyệt đối không tự động gán bằng `0`.
-   - Phân tách rõ ràng giữa chi phí cố định (mẫu sản phẩm, sản xuất nội dung, ngân sách quảng cáo) và chi phí biến đổi cho mỗi đơn hàng phân bổ.
+    - Phân tách rõ ràng giữa chi phí cố định (mẫu sản phẩm, sản xuất nội dung, ngân sách quảng cáo) và chi phí biến đổi cho mỗi đơn hàng phân bổ.
+    - Hợp đồng thẩm định an toàn JavaScript: Toàn bộ đầu ra tiền tệ nguyên phái sinh được thẩm định không vượt quá $Number.MAX\_SAFE\_INTEGER = 9\,007\,199\,254\,740\,991$ ($2^{53} - 1$). Payload tạo mới, cập nhật hoặc rebase gây tràn số bị từ chối với HTTP 422, bảo toàn ngữ nghĩa phân biệt giữa thiếu giả định (`null`) và tràn số transport.
 6. **Thẩm quyền Tính toán & Làm tròn Thuộc Backend Duy nhất (Backend Calculation Authority):**
    - Toàn bộ công thức tài chính được tính toán tất định tại thời điểm đọc ở backend trong `backend/app/analytics/economics.py`.
    - Không lưu trữ (not persisted) bất kỳ chỉ số kinh tế phái sinh nào vào database.
    - Áp dụng chính sách làm tròn chuẩn round-half-up số nguyên thuần túy:
      $$\text{round\_ratio\_half\_up}(N, D) = (2N + D) // (2D)$$
-   - Điểm hòa vốn chia trần (ceiling division):
-     $$\text{break\_even\_orders} = (\text{fixed\_cost} + \text{contribution} - 1) // \text{contribution}$$
+   - Điểm hòa vốn sử dụng tử số đóng góp hữu tỉ chuẩn xác trước khi chia trần số nguyên để loại bỏ hoàn toàn sai lệch off-by-one do làm tròn hiển thị:
+     $$\text{contrib\_num} = \text{base\_vnd} \times \text{rate\_bps} - \text{var\_cost\_per\_order\_vnd} \times 10\,000$$
+     $$\text{break\_even\_orders} = \left\lceil \frac{\text{fixed\_campaign\_cost\_vnd} \times 10\,000}{\text{contrib\_num}} \right\rceil = (\text{fixed\_cost} \times 10\,000 + \text{contrib\_num} - 1) // \text{contrib\_num}$$
+     (với $\text{contrib\_num} > 0$).
    - Frontend chỉ hiển thị, không nắm bất kỳ thẩm quyền tính toán hay làm tròn tài chính nào.
 7. **Ranh giới Phiên bản Tương thích "3" & Kế thừa ADR-004 (Compatibility "2" → "3"):**
    - Schema Phase 6 được tích hợp qua additive bootstrap trong `init_db.py`, bổ sung bảng bắt buộc `economics_scenarios`.

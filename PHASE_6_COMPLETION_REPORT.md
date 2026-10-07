@@ -6,8 +6,11 @@
 > **Authoritative Plan:** [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md)  
 > **Accepted Architecture:** [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md)  
 > **Target Compatibility Version:** `"3"`  
-> **Date of Remediation & Report Update:** 2026-10-07  
-> **Status:** `REMEDIATION COMPLETED — READY FOR EXTERNAL PROJECT CONTROL RE-REVIEW`
+> **Accepted Final Remediation Commit:** `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d` (`1bd1e5d`)  
+> **Previous Remediation Commit:** `2603deb16af57cf5931ac801fd9ff21fb8cdde37`  
+> **Final External Decision:** `Phase 6 = COMPLETE`  
+> **Date of Acceptance:** 2026-10-07  
+> **Status:** `COMPLETE / ACCEPTED BY EXTERNAL PROJECT CONTROL (RELEASE REQUALIFICATION PENDING)`
 
 ---
 
@@ -177,11 +180,16 @@ Phase 6 introduces zero new security vulnerabilities and preserves all previousl
 
 ---
 
-## 6. Project Control Recommendation
+## 6. Project Control Decision & Release Handoff
 
-Phase 6 technical remediation is **COMPLETE, VERIFIED, AND FULLY RECONCILED**.
-- All 10 remediation points have concrete evidence in the repository.
+Phase 6 technical implementation and final remediations have been formally accepted by external Project Control:
+- **Final External Completion Decision:** **`Phase 6 = COMPLETE`**
+- **Implementation Status:** **`COMPLETE / ACCEPTED`**
+- All 10 remediation points and 42 acceptance criteria verified and supported by durable code/test evidence.
+- Accepted final remediation commit: `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d` (`1bd1e5d`).
 - Backend passes 223 tests; frontend passes 52 tests; TypeScript, ESLint, Next.js build, and runtime healthchecks are 100% green.
-- Phase 7 remains strictly provisional without implementation code or tests.
+- Source-release qualification: **`PENDING REQUALIFICATION`** under QA — Build & Release (prior qualification superseded by remediation changes).
+- Phase 7 remains strictly provisional without implementation code or tests (`Implementation: NOT AUTHORIZED`).
 
-**Status:** **`READY FOR FINAL PHASE 6 COMPLETION REVIEW`**
+**Phase Status:** **`COMPLETE / ACCEPTED`**  
+**Release Gate:** **`PENDING RELEASE REQUALIFICATION`**

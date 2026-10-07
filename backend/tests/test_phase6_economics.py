@@ -163,6 +163,13 @@ def test_p6_ac_24_break_even_attributable_orders_exact_math():
     # 1,000,000,000 / 30,000,000 = 33.333... -> ceil is 34 orders
     assert calculate_break_even_orders(100_000, 300, 0, 100_000) == 34
 
+    # Exact rational contribution regression vector:
+    # base = 105 VND, rate = 1000 bps (10.0%), variable = 10 VND, fixed = 1 VND
+    # Presentation-rounded commission would be round(10.5) = 11 VND -> contrib = 1 VND -> ceil(1/1) = 1 (WRONG!)
+    # Exact rational: contrib_num = 105 * 1000 - 10 * 10,000 = 5,000
+    # cost_num = 1 * 10,000 = 10,000 -> ceil(10,000 / 5,000) = 2 (CORRECT, NEVER 1!)
+    assert calculate_break_even_orders(105, 1_000, 10, 1) == 2
+
     # Fixed cost = 0 -> 0 orders to break even
     assert calculate_break_even_orders(100_000, 1_000, 0, 0) == 0
 
@@ -1201,5 +1208,245 @@ def test_api_diagnostics_includes_economics(test_client: TestClient):
     assert "table_counts" in data["database"]
     assert "economics_scenarios" in data["database"]["table_counts"]
     assert isinstance(data["database"]["table_counts"]["economics_scenarios"], int)
+
+
+# ==============================================================================
+# Remediation: Safe-Integer Contracts & Focused Provenance Tests
+# ==============================================================================
+
+def test_safe_integer_max_boundary_and_rejections(test_client: TestClient, p6_db):
+    """
+    Verifies JavaScript safe-integer contract (Number.MAX_SAFE_INTEGER = 9,007,199,254,740,991):
+    - Field-level max boundaries: accepted at bound, rejected at bound + 1.
+    - Derived totals (variable_cost * expected_orders): accepted within safe integer,
+      rejected with HTTP 422 when product exceeds Number.MAX_SAFE_INTEGER.
+    """
+    _, _, prod, _ = p6_db
+    p_id = prod.id
+
+    # 1. Field bounds: commission_rate_bps (max 10,000)
+    r_bps_ok = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Bps Max", "commission_rate_bps": 10_000},
+    )
+    assert r_bps_ok.status_code == 201
+
+    r_bps_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Bps Over", "commission_rate_bps": 10_001},
+    )
+    assert r_bps_over.status_code == 422
+
+    # 2. Field bounds: commission_base_vnd (max 10^11 = 100,000,000,000)
+    r_base_ok = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Base Max", "commission_base_vnd": 100_000_000_000},
+    )
+    assert r_base_ok.status_code == 201
+
+    r_base_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Base Over", "commission_base_vnd": 100_000_000_001},
+    )
+    assert r_base_over.status_code == 422
+
+    # 3. Field bounds: sample_cost_vnd (max 10^11)
+    r_sample_ok = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Sample Max", "sample_cost_vnd": 100_000_000_000},
+    )
+    assert r_sample_ok.status_code == 201
+
+    r_sample_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Sample Over", "sample_cost_vnd": 100_000_000_001},
+    )
+    assert r_sample_over.status_code == 422
+
+    # 4. Field bounds: variable_cost_per_attributed_order_vnd (max 10^11)
+    r_var_ok = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Var Max", "variable_cost_per_attributed_order_vnd": 100_000_000_000},
+    )
+    assert r_var_ok.status_code == 201
+
+    r_var_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Var Over", "variable_cost_per_attributed_order_vnd": 100_000_000_001},
+    )
+    assert r_var_over.status_code == 422
+
+    # 5. Field bounds: expected_attributed_orders (max 10^6)
+    r_ord_ok = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Orders Max", "expected_attributed_orders": 1_000_000},
+    )
+    assert r_ord_ok.status_code == 201
+
+    r_ord_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Orders Over", "expected_attributed_orders": 1_000_001},
+    )
+    assert r_ord_over.status_code == 422
+
+    # 6. Derived total: variable_cost * expected_orders safe-integer contract
+    # Within bound: 90,071,992,547 * 100,000 = 9,007,199,254,700,000 <= 9,007,199,254,740,991
+    r_total_ok = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "Total Safe OK",
+            "variable_cost_per_attributed_order_vnd": 90_071_992_547,
+            "expected_attributed_orders": 100_000,
+        },
+    )
+    assert r_total_ok.status_code == 201
+
+    # Over bound: 90,071,992,548 * 100,000 = 9,007,199,254,800,000 > 9,007,199,254,740,991
+    r_total_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "Total Safe Over",
+            "variable_cost_per_attributed_order_vnd": 90_071_992_548,
+            "expected_attributed_orders": 100_000,
+        },
+    )
+    assert r_total_over.status_code == 422
+    assert "giới hạn an toàn" in r_total_over.json()["detail"][0]["msg"]
+
+    # 7. Update scenario safe-integer enforcement
+    sc_id = r_total_ok.json()["id"]
+    r_patch_over = test_client.patch(
+        f"/api/products/{p_id}/economics/{sc_id}",
+        json={"variable_cost_per_attributed_order_vnd": 90_071_992_548},
+    )
+    assert r_patch_over.status_code == 422
+
+
+def test_pure_engine_safe_integer_clamping():
+    """
+    Pure analytics engine defensively clamps / returns None for numbers exceeding JS_MAX_SAFE_INTEGER.
+    """
+    from app.analytics.economics import (
+        JS_MAX_SAFE_INTEGER,
+        calculate_expected_campaign_economics,
+        calculate_break_even_orders,
+        calculate_commission_per_order,
+    )
+    # Beyond safe integer returns None for expected variable cost
+    exp_comm, exp_var, exp_contrib, ret = calculate_expected_campaign_economics(
+        base_vnd=100_000,
+        rate_bps=1000,
+        variable_cost_per_order_vnd=90_071_992_548,
+        fixed_campaign_cost_vnd=0,
+        expected_orders=100_000,
+    )
+    assert exp_var is None
+    assert exp_contrib is None
+
+    # Within safe integer succeeds
+    exp_comm2, exp_var2, exp_contrib2, ret2 = calculate_expected_campaign_economics(
+        base_vnd=100_000,
+        rate_bps=1000,
+        variable_cost_per_order_vnd=90_071_992_547,
+        fixed_campaign_cost_vnd=0,
+        expected_orders=100_000,
+    )
+    assert exp_var2 == 9_007_199_254_700_000
+    assert exp_var2 <= JS_MAX_SAFE_INTEGER
+
+
+def test_focused_provenance_rules(test_client: TestClient, p6_db):
+    """
+    Focused verification of all 5 provenance rules:
+    1. Client cannot forge provenance or source timestamp.
+    2. Manual edit clears timestamp and sets source to 'user_entered'.
+    3. Proxy price and timestamp come from the exact same observation.
+    4. PATCH cannot change is_default.
+    5. Crawler commission rate is not economics authority.
+    """
+    session, engine, prod, _ = p6_db
+    p_id = prod.id
+
+    # Rule 1: Client cannot forge provenance or timestamp
+    r_forge = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "Forged Provenance",
+            "commission_base_vnd": 180_000,
+            "commission_base_source": "observed_price_proxy",
+            "commission_base_observed_at": "2020-01-01T00:00:00Z",
+        },
+    )
+    assert r_forge.status_code == 201
+    d_forge = r_forge.json()
+    # Server forced user_entered and ignored forged proxy fields
+    assert d_forge["commission_base_source"] == "user_entered"
+    assert d_forge["commission_base_observed_at"] is None
+
+    # Rule 2: Manual edit clears timestamp
+    r_proxy = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Proxy Valid", "use_observed_price": True},
+    )
+    assert r_proxy.status_code == 201
+    proxy_id = r_proxy.json()["id"]
+    assert r_proxy.json()["commission_base_source"] == "observed_price_proxy"
+    assert r_proxy.json()["commission_base_observed_at"] is not None
+
+    r_edit = test_client.patch(
+        f"/api/products/{p_id}/economics/{proxy_id}",
+        json={"commission_base_vnd": 210_000},
+    )
+    assert r_edit.status_code == 200
+    d_edit = r_edit.json()
+    assert d_edit["commission_base_source"] == "user_entered"
+    assert d_edit["commission_base_observed_at"] is None
+
+    # Rule 3: Proxy price and timestamp come from the exact same snapshot
+    # prod has snapshot with price 150_000.4 VND
+    latest_snap = (
+        session.query(ProductSnapshot)
+        .filter_by(product_id=p_id)
+        .order_by(ProductSnapshot.captured_at.desc(), ProductSnapshot.id.desc())
+        .first()
+    )
+    assert latest_snap is not None
+    assert r_proxy.json()["commission_base_vnd"] == 150_000
+    # Timestamp matches snapshot captured_at
+    obs_at = datetime.fromisoformat(r_proxy.json()["commission_base_observed_at"].replace("Z", "+00:00"))
+    assert obs_at == latest_snap.captured_at
+
+    # Rule 4: PATCH cannot change is_default
+    r_sibling = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Sibling Not Default"},
+    )
+    assert r_sibling.status_code == 201
+    sib_id = r_sibling.json()["id"]
+    assert r_sibling.json()["is_default"] is False
+
+    # Attempt to change is_default via PATCH
+    r_patch_def = test_client.patch(
+        f"/api/products/{p_id}/economics/{sib_id}",
+        json={"is_default": True},
+    )
+    assert r_patch_def.status_code == 200
+    # is_default is untouched!
+    assert r_patch_def.json()["is_default"] is False
+
+    # Rule 5: Crawler snapshot commission rate is not economics authority
+    new_snap = ProductSnapshot(
+        product_id=p_id,
+        price=160_000.0,
+        commission_rate=45.0,  # 45% crawler observation
+        captured_at=datetime.now(timezone.utc),
+    )
+    session.add(new_snap)
+    session.commit()
+
+    # Verify scenario commission_rate_bps was NOT modified by crawler
+    sc_check = test_client.get(f"/api/products/{p_id}/economics/{proxy_id}").json()
+    # Was None, remains None (or user's value), never 4500 bps
+    assert sc_check["commission_rate_bps"] is None
 
 

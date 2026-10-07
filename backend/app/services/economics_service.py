@@ -319,6 +319,16 @@ class EconomicsService:
                 if field in update_fields:
                     setattr(scenario, field, update_fields[field])
 
+            # Enforce JS safe-integer contract on resulting combined scenario state
+            var_cost = scenario.variable_cost_per_attributed_order_vnd
+            orders = scenario.expected_attributed_orders
+            if var_cost is not None and orders is not None:
+                if var_cost * orders > 9_007_199_254_740_991:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Tổng chi phí biến đổi dự kiến vượt quá giới hạn an toàn JavaScript (Number.MAX_SAFE_INTEGER = 9007199254740991).",
+                    )
+
             scenario.updated_at = datetime.now(timezone.utc)
             self.db.flush()
             return scenario

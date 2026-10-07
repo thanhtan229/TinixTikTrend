@@ -1,5 +1,12 @@
 # Project Control Record — Phase 6 Completion Acceptance
 
+> [!WARNING]
+> **GOVERNANCE STATUS UPDATE (SUPERSEDED NOTICE — 2026-10-07):**
+> The earlier local record declaring Phase 6 completion accepted is **SUPERSEDED**.
+> External Project Control in the external control conversation classified Phase 6 as `INCOMPLETE` and required completion of 10 remediation items.
+> Those technical remediations have now been executed, verified, and packaged.
+> The phase state is currently: **REMEDIATION COMPLETED — PENDING EXTERNAL PROJECT CONTROL RE-REVIEW**.
+
 > **Authority:** `00 — Project Control & Roadmap`  
 > **Date:** 2026-10-07  
 > **Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence  
@@ -7,11 +14,11 @@
 > **Authoritative Completion Report:** [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md)  
 > **Accepted Plan:** [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md)  
 > **Accepted Architecture:** [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md)  
-> **Classification:** `COMPLETE`
+> **Classification:** `REMEDIATION COMPLETED — PENDING EXTERNAL RE-REVIEW (PREVIOUS CLAIM SUPERSEDED)`
 
 ---
 
-## 1. Formal Completion Decision
+## 1. Governance Decision Status
 
 Project Control has reviewed the implementation and verification evidence for Phase 6 ("Affiliate Economics & Profitability Intelligence") presented in [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md).
 

@@ -507,11 +507,15 @@ def test_p6_ac_35_representative_economics_benchmark(tmp_path):
     col_best = min(col_latencies)
     col_median = statistics.median(col_latencies)
     col_worst = max(col_latencies)
+    col_sorted = sorted(col_latencies)
+    col_p95 = col_sorted[int(0.95 * len(col_sorted))]
 
     assert len(members) == 20
     assert query_count <= 3, f"Collection member list executed {query_count} queries (expected <= 3)"
     assert col_worst < 200.0, f"Collection member list worst latency {col_worst:.2f}ms exceeded 200ms hard gate"
-    print(f"\n[BENCHMARK P6-AC-35] Collection members (20 items with econ): best={col_best:.2f}ms, median={col_median:.2f}ms, worst={col_worst:.2f}ms, queries={query_count}")
+    print(f"\n[BENCHMARK P6-AC-33] Collection members (20 items with econ):")
+    print(f"  Series: {[round(x, 2) for x in col_latencies]}")
+    print(f"  Best={col_best:.2f}ms, Median={col_median:.2f}ms, p95={col_p95:.2f}ms, Max={col_worst:.2f}ms, Queries={query_count}")
 
     # -------------------------------------------------------------
     # Benchmark Part 2: 5-Product Compare with Economics
@@ -532,11 +536,15 @@ def test_p6_ac_35_representative_economics_benchmark(tmp_path):
     cmp_best = min(cmp_latencies)
     cmp_median = statistics.median(cmp_latencies)
     cmp_worst = max(cmp_latencies)
+    cmp_sorted = sorted(cmp_latencies)
+    cmp_p95 = cmp_sorted[int(0.95 * len(cmp_sorted))]
 
     assert len(cmp_res.products) == 5
     assert query_count <= 4, f"Compare with collection executed {query_count} queries (expected <= 4)"
     assert cmp_worst < 200.0, f"Compare products worst latency {cmp_worst:.2f}ms exceeded 200ms hard gate"
-    print(f"[BENCHMARK P6-AC-35] Compare products (5 items with econ): best={cmp_best:.2f}ms, median={cmp_median:.2f}ms, worst={cmp_worst:.2f}ms, queries={query_count}")
+    print(f"[BENCHMARK P6-AC-33] Compare products (5 items with econ):")
+    print(f"  Series: {[round(x, 2) for x in cmp_latencies]}")
+    print(f"  Best={cmp_best:.2f}ms, Median={cmp_median:.2f}ms, p95={cmp_p95:.2f}ms, Max={cmp_worst:.2f}ms, Queries={query_count}")
 
     event.remove(engine, "after_cursor_execute", query_listener)
     db.close()

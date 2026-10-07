@@ -1,11 +1,23 @@
 # Project Control Phase 6 Plan Approval Record
 
+> [!WARNING]
+> **GOVERNANCE STATUS UPDATE (SUPERSEDED NOTICE — 2026-10-07):**
+> The earlier assertion in this record that external Project Control had already finalized Phase 6 plan approval and authorized progression prior to implementation is **SUPERSEDED**.
+> External Project Control evaluated the repository state, classified Phase 6 as `INCOMPLETE`, and mandated a comprehensive technical remediation covering:
+> 1. Exact rational break-even calculation ($contribution\_numerator$ prior to presentation rounding with regression vector $105/1000/10/1 \implies 2$).
+> 2. Complete JavaScript safe-integer contract closure across all derived values and multiplication totals with boundary and one-above tests.
+> 3. Schema naming verification (`economics_scenarios` vs `product_economics_scenarios`).
+> 4. Portable backup format correction (SQLite binary `.sqlite3`, correcting erroneous "JSON" wording).
+> 5. Comprehensive isolated disaster recovery lifecycle evidence.
+> 6. 10-iteration performance benchmark qualification with full series, best, median, p95, and max.
+> 7. Expanded 12-scenario manual QA matrix.
+> 8. Focused 5-rule provenance security tests.
+> 9. Truthful governance record reconciliation without rewriting Git history.
+> Current status remains: **REMEDIATION COMPLETED — READY FOR EXTERNAL PROJECT CONTROL RE-REVIEW**.
+
 - **Date:** 2026-10-07
 - **Role:** `00 — Project Control & Roadmap`
-- **Decision:** `PHASE 6 PLAN APPROVED & IMPLEMENTATION AUTHORIZED`
-- **Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence
-- **Scope:** VND-only, manual-first Product Economics Scenarios
-- **Authoritative Plan:** [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md)
+- **Recorded Plan Revision:** [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md)
 - **Approved Plan Revision Commit:** `4713fa422eb7f407b78995a9d453711910efc354`
 - **Authoritative Acceptance Criteria:** `P6-AC-01` through `P6-AC-42` (42 criteria authoritative)
 - **Accepted Research Artifact:** [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md) (accepted under `8c3f8949b8c9e61691c2e2756557e9abadc035b5`)

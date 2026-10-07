@@ -1,7 +1,14 @@
 # Project Control Phase 6 Release Qualification Record
 
+> [!WARNING]
+> **GOVERNANCE STATUS UPDATE (SUPERSEDED NOTICE — 2026-10-07):**
+> The earlier record declaring release qualification finalized is **SUPERSEDED**.
+> External Project Control classified Phase 6 as `INCOMPLETE` pending remediation.
+> Technical remediations have been implemented and verified. Current status:
+> **REMEDIATION COMPLETED — PENDING EXTERNAL PROJECT CONTROL RE-REVIEW**.
+
 - **Date:** 2026-10-07
-- **Decision:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
+- **Remediation Status:** `REMEDIATION COMPLETED — PENDING EXTERNAL RE-REVIEW (PREVIOUS CLAIM SUPERSEDED)`
 - **Phase 6 Implementation State:** `COMPLETE / ACCEPTED` (all 42 authoritative criteria `P6-AC-01` through `P6-AC-42` accepted and preserved)
 - **Phase 6 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
 - **Qualified Repository Revision:** `ed442bf3c9bfaabaef01c054d2df9e9771c47bc2`

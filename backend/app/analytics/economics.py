@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, NamedTuple
 from decimal import Decimal, ROUND_HALF_UP
 
 RATE_SCALE: int = 10_000  # 10,000 bps = 100.00%
+JS_MAX_SAFE_INTEGER: int = 9_007_199_254_740_991  # 2^53 - 1 JavaScript safe integer limit
 
 
 class DerivedEconomicsResult(NamedTuple):
@@ -62,7 +63,10 @@ def calculate_commission_per_order(
     if base_vnd < 0 or rate_bps < 0 or rate_bps > RATE_SCALE:
         return None
     numerator = base_vnd * rate_bps
-    return round_half_up_ratio(numerator, RATE_SCALE)
+    res = round_half_up_ratio(numerator, RATE_SCALE)
+    if res > JS_MAX_SAFE_INTEGER:
+        return None
+    return res
 
 
 def calculate_fixed_campaign_cost(
@@ -79,7 +83,10 @@ def calculate_fixed_campaign_cost(
         return None
     if sample_cost_vnd < 0 or content_cost_vnd < 0 or promotion_cost_vnd < 0:
         return None
-    return sample_cost_vnd + content_cost_vnd + promotion_cost_vnd
+    total = sample_cost_vnd + content_cost_vnd + promotion_cost_vnd
+    if total > JS_MAX_SAFE_INTEGER:
+        return None
+    return total
 
 
 def calculate_contribution_per_order(
@@ -94,7 +101,10 @@ def calculate_contribution_per_order(
         return None
     if variable_cost_per_order_vnd < 0:
         return None
-    return commission_per_order_vnd - variable_cost_per_order_vnd
+    res = commission_per_order_vnd - variable_cost_per_order_vnd
+    if abs(res) > JS_MAX_SAFE_INTEGER:
+        return None
+    return res
 
 
 def calculate_break_even_orders(
@@ -105,12 +115,16 @@ def calculate_break_even_orders(
 ) -> Optional[int]:
     """
     Calculates break-even attributable order count using exact rational contribution numerator
-    and integer ceiling division.
+    and integer ceiling division:
+    contribution_numerator = commission_base_vnd * commission_rate_bps - variable_cost_per_attributed_order_vnd * 10_000
+    break_even_orders = ceil(fixed_campaign_cost_vnd * 10_000 / contribution_numerator)
+    when contribution_numerator > 0.
     Does NOT use presentation-rounded commission/order to avoid off-by-one errors.
     Returns None if:
     - fixed_campaign_cost_vnd is None or < 0
     - base_vnd or rate_bps or variable_cost_per_order_vnd is None
     - unit contribution numerator <= 0 (zero or negative contribution margin)
+    - derived order count exceeds JS_MAX_SAFE_INTEGER
     """
     if (
         fixed_campaign_cost_vnd is None
@@ -135,7 +149,10 @@ def calculate_break_even_orders(
 
     # Exact integer ceiling division: ceil(A / B) = (A + B - 1) // B
     cost_num = fixed_campaign_cost_vnd * RATE_SCALE
-    return (cost_num + contrib_num - 1) // contrib_num
+    break_even = (cost_num + contrib_num - 1) // contrib_num
+    if break_even > JS_MAX_SAFE_INTEGER:
+        return None
+    return break_even
 
 
 def calculate_expected_campaign_economics(
@@ -147,22 +164,31 @@ def calculate_expected_campaign_economics(
 ) -> tuple[Optional[int], Optional[int], Optional[int], Optional[float]]:
     """
     Calculates expected campaign metrics if expected_orders is provided.
+    Guarantees all derived values fit within JS_MAX_SAFE_INTEGER.
     Returns:
     (expected_commission_vnd, expected_variable_cost_vnd, expected_contribution_vnd, return_on_cost_ratio)
     """
-    if expected_orders is None or expected_orders < 0:
+    if expected_orders is None or expected_orders < 0 or expected_orders > JS_MAX_SAFE_INTEGER:
         return (None, None, None, None)
 
     # 1. Expected gross commission
     if base_vnd is not None and rate_bps is not None and 0 <= rate_bps <= RATE_SCALE and base_vnd >= 0:
         gross_num = base_vnd * rate_bps * expected_orders
-        expected_commission_vnd: Optional[int] = round_half_up_ratio(gross_num, RATE_SCALE)
+        raw_exp_comm = round_half_up_ratio(gross_num, RATE_SCALE)
+        if raw_exp_comm <= JS_MAX_SAFE_INTEGER:
+            expected_commission_vnd: Optional[int] = raw_exp_comm
+        else:
+            expected_commission_vnd = None
     else:
         expected_commission_vnd = None
 
     # 2. Expected variable cost
     if variable_cost_per_order_vnd is not None and variable_cost_per_order_vnd >= 0:
-        expected_variable_cost_vnd: Optional[int] = variable_cost_per_order_vnd * expected_orders
+        raw_var_cost = variable_cost_per_order_vnd * expected_orders
+        if raw_var_cost <= JS_MAX_SAFE_INTEGER:
+            expected_variable_cost_vnd: Optional[int] = raw_var_cost
+        else:
+            expected_variable_cost_vnd = None
     else:
         expected_variable_cost_vnd = None
 
@@ -172,9 +198,13 @@ def calculate_expected_campaign_economics(
         and fixed_campaign_cost_vnd is not None
         and expected_variable_cost_vnd is not None
     ):
-        expected_contribution_vnd: Optional[int] = (
+        raw_contrib = (
             expected_commission_vnd - fixed_campaign_cost_vnd - expected_variable_cost_vnd
         )
+        if abs(raw_contrib) <= JS_MAX_SAFE_INTEGER:
+            expected_contribution_vnd: Optional[int] = raw_contrib
+        else:
+            expected_contribution_vnd = None
     else:
         expected_contribution_vnd = None
 

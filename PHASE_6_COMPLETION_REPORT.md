@@ -10,7 +10,7 @@
 > **Previous Remediation Commit:** `2603deb16af57cf5931ac801fd9ff21fb8cdde37`  
 > **Final External Decision:** `Phase 6 = COMPLETE`  
 > **Date of Acceptance:** 2026-10-07  
-> **Status:** `COMPLETE / ACCEPTED BY EXTERNAL PROJECT CONTROL (RELEASE REQUALIFICATION PENDING)`
+> **Status:** `COMPLETE / ACCEPTED BY EXTERNAL PROJECT CONTROL (RELEASE QUALIFIED)`
 
 ---
 
@@ -182,14 +182,21 @@ Phase 6 introduces zero new security vulnerabilities and preserves all previousl
 
 ## 6. Project Control Decision & Release Handoff
 
-Phase 6 technical implementation and final remediations have been formally accepted by external Project Control:
+Phase 6 technical implementation, final remediations, and source-release qualification have been formally accepted by external Project Control:
 - **Final External Completion Decision:** **`Phase 6 = COMPLETE`**
 - **Implementation Status:** **`COMPLETE / ACCEPTED`**
 - All 10 remediation points and 42 acceptance criteria verified and supported by durable code/test evidence.
 - Accepted final remediation commit: `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d` (`1bd1e5d`).
+- Completion reconciliation commit: `734b07be296c7613f9928b5e994a84525cd2135f` (`734b07b`).
 - Backend passes 223 tests; frontend passes 52 tests; TypeScript, ESLint, Next.js build, and runtime healthchecks are 100% green.
-- Source-release qualification: **`PENDING REQUALIFICATION`** under QA — Build & Release (prior qualification superseded by remediation changes).
+- Source-release qualification: **`READY WITH DOCUMENTED NON-BLOCKING ISSUES`** (QA — Build & Release completed requalification on actual checkout).
+- Qualified source revision: `63bf47a329ecb78631165a2d677119ff39e105e4` (`63bf47a`).
+- Release qualification record: [`PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md).
+- Portable backup compatibility version: `"3"` (ADR-004 binary SQLite format).
+- Zero blocking issues remain.
 - Phase 7 remains strictly provisional without implementation code or tests (`Implementation: NOT AUTHORIZED`).
+- Next lifecycle action: Return provisional Phase 7 package to `00 — Project Control & Roadmap` for review before Phase 7 implementation authorization.
 
 **Phase Status:** **`COMPLETE / ACCEPTED`**  
-**Release Gate:** **`PENDING RELEASE REQUALIFICATION`**
+**Release Gate:** **`READY WITH DOCUMENTED NON-BLOCKING ISSUES`**  
+**Lifecycle State:** **`PHASE 6 LIFECYCLE CLOSED`**

@@ -219,27 +219,33 @@ All release acceptance criteria are now validated under the revised acceptance c
 
 ---
 
-## Phase 6 — Affiliate Economics & Profitability Intelligence: SELECTED / RESEARCH COMPLETE / ARCHITECTURE ACCEPTED
+## Phase 6 — Affiliate Economics & Profitability Intelligence: COMPLETE / ACCEPTED (RELEASE QUALIFIED)
 
 - **Decision State:**
-  - **Phase 6 Status:** `SELECTED / RESEARCH COMPLETE / ARCHITECTURE ACCEPTED`
+  - **Phase 6 Status:** `COMPLETE / ACCEPTED`
   - **Phase Name:** `Affiliate Economics & Profitability Intelligence`
   - **Selection Record:** [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md)
   - **Authoritative Selection Commit:** `d97f00f7819e778954a76abe3605e1442ea4155d`
-  - **Superseded Identifier Discrepancy:** Previously reported identifier `d97f00f9a25b16f398f658be424b94f1e58286ad` is superseded and corrected to `d97f00f7819e778954a76abe3605e1442ea4155d`.
   - **Research Gate:** `CLOSED / ACCEPTED`
   - **Research Artifact:** [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md)
-  - **Research Readiness:** `RESEARCH READY FOR PROJECT CONTROL`
   - **Research Acceptance Record:** [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md)
-  - **Product Recommendation:** `RECOMMEND WITH REVISED SCOPE — ACCEPTED`
-  - **Selected MVP Direction:** `VND-only, manual-first Product Economics Scenarios`
+  - **Selected Direction:** `VND-only, manual-first Product Economics Scenarios`
   - **Architecture Gate:** `CLOSED / ACCEPTED`
   - **ADR-005 Status:** `ACCEPTED` ([`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md))
   - **ADR-005 Acceptance Record:** [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md)
-  - **Phase Plan Status:** `NOT YET APPROVED` (Phase 6 planning is now authorized to begin)
-  - **Implementation Status:** `NOT AUTHORIZED`
-  - **Acceptance Criteria:** `NONE DEFINED YET` (no Phase 6 acceptance criteria exist yet)
-  - **Planning Authorization:** Phase 6 planning may now begin against the accepted research and accepted ADR-005. The future plan must strictly comply with ADR-005 and the accepted research artifact. Implementation remains NOT AUTHORIZED until the Phase 6 implementation plan is reviewed and approved by Project Control.
+  - **Authoritative Plan:** [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md) (`APPROVED`)
+  - **Authoritative Acceptance Criteria:** 42 criteria (`P6-AC-01` through `P6-AC-42`, all 42 passing and accepted)
+  - **Implementation Status:** `COMPLETE / ACCEPTED`
+  - **Final Remediation Accepted:** Commit `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d` (`1bd1e5d`)
+  - **Completion Reconciliation:** Commit `734b07be296c7613f9928b5e994a84525cd2135f` (`734b07b`)
+  - **Completion Acceptance Record:** [`PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md)
+  - **Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES`
+  - **Qualified Source Revision:** `63bf47a329ecb78631165a2d677119ff39e105e4` (`63bf47a`)
+  - **Release Qualification Record:** [`PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md)
+  - **Completion Report:** [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md)
+  - **Portable Backup Compatibility:** `"3"` active under unchanged ADR-004 same-version restore semantics
+  - **Supported Release Boundary:** `Windows / local / source-based runtime` (`.exe` packaging deferred)
+  - **Phase 6 Lifecycle:** `PHASE 6 LIFECYCLE CLOSED`
 
 - **Accepted Revised Scope & Architectural Constraints:**
   - **MVP Product Direction:** VND-only, manual-first Product Economics Scenarios.
@@ -310,9 +316,13 @@ All release acceptance criteria are now validated under the revised acceptance c
   - Approved Plan Revision Baseline: `4713fa422eb7f407b78995a9d453711910efc354`
   - Authoritative Completion Report: [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md)
   - Project Control Completion Acceptance Record: [`PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md)
+  - Project Control Release Qualification Record: [`PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md)
   - Authoritative Acceptance Criteria: 42 criteria (`P6-AC-01` through `P6-AC-42`), all 42 passing and accepted.
   - Workstreams: 10 dependency-ordered workstreams (WS-0 through WS-9) fully completed.
   - Portable Backup Compatibility: Advanced from `"2"` to `"3"` in `system_metadata`.
+  - Source-Release Readiness: `READY WITH DOCUMENTED NON-BLOCKING ISSUES`.
+  - Qualified Source Revision: `63bf47a329ecb78631165a2d677119ff39e105e4`.
+  - Phase 6 Lifecycle: `PHASE 6 LIFECYCLE CLOSED`.
 
 
 - **Preserved Architecture Boundaries:**
@@ -346,15 +356,16 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
 - **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
 - **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md)).
-- **Phase 6 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md); ADR-005 ACCEPTED; portable backup compatibility version `"3"`; final remediation accepted by external Project Control at commit `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d`; previous remediation commit: `2603deb16af57cf5931ac801fd9ff21fb8cdde37`; final external completion decision: `Phase 6 = COMPLETE`; formal completion acceptance record: [`PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md); completion report: [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md)).
-- **Phase 6 Source-Release Qualification:** `PENDING REQUALIFICATION` (prior qualification superseded by remediation changes; release requalification pending under QA — Build & Release).
-- **Active Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (Reconciliation Complete / Pending Release Requalification).
-- **Phase 7 Status:** `PROVISIONAL — NOT YET ACCEPTED BY EXTERNAL PROJECT CONTROL`; Phase 7 implementation `NOT AUTHORIZED`; Phase 7 plan `PROVISIONAL / NOT APPROVED`; research, ADR-006, and [`PHASE_7_PLAN.md`](PHASE_7_PLAN.md) held pending Phase 6 release requalification and formal Project Control review.
+- **Phase 6 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md); ADR-005 ACCEPTED; portable backup compatibility version `"3"`; final remediation accepted by external Project Control at commit `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d`; completion reconciliation commit: `734b07be296c7613f9928b5e994a84525cd2135f`; final external completion decision: `Phase 6 = COMPLETE`; formal completion acceptance record: [`PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md); completion report: [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md)).
+- **Phase 6 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (source-release requalification completed post-remediation; qualified source revision: `63bf47a329ecb78631165a2d677119ff39e105e4`; formal qualification record: [`PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md)).
+- **Phase 6 Lifecycle State:** `PHASE 6 LIFECYCLE CLOSED` (Research accepted, ADR-005 accepted, implementation complete, completion accepted, completion state reconciled, source-release QA accepted, release state reconciled).
+- **Active Phase / Next Action:** Return provisional Phase 7 selection/research/ADR/plan package to `00 — Project Control & Roadmap` for review before Phase 7 implementation authorization.
+- **Phase 7 Status:** `PROVISIONAL — NOT YET ACCEPTED BY EXTERNAL PROJECT CONTROL`; Phase 7 implementation `NOT AUTHORIZED`; Phase 7 plan `PROVISIONAL / NOT APPROVED`; research, ADR-006, and [`PHASE_7_PLAN.md`](PHASE_7_PLAN.md) held pending formal Project Control review.
 - **Architecture & ADRs:** ADR-003, ADR-004, and ADR-005 active and accepted; ADR-006 provisional; `portable_backup_compatibility_version` in implemented product is `"3"`.
-- **QA Code & Runtime Qualification:** PASS. Backend 223/223 pytest PASS (including Phase 6 exact-rational break-even and JS safe integer semantic contract tests), Frontend 52/52 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 4 SQL queries; Zero N+1; representative benchmarks: Collections 2.92ms worst, Compare 40.20ms worst (<200ms hard gate PASS); Phase-5/v2 → Phase-6/v3 isolated bootstrap PASS; version-2 backup rejection PASS; version-3 backup/restore validated; no functional regression detected; ADR-004 same-version semantics preserved.
-- **Source-Control Handoff:** PHASE 6 ACCEPTED / PENDING RELEASE REQUALIFICATION. Accepted final remediation revision: `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d`.
+- **QA Code & Runtime Qualification:** PASS. Backend 223/223 pytest PASS (including Phase 6 exact-rational break-even and JS safe integer semantic contract tests), Frontend 52/52 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 4 SQL queries; Zero N+1; representative benchmarks: Collections 1.22ms best / 3.34ms worst, Compare 7.44ms best / 11.11ms worst (<200ms hard gate PASS); Phase-5/v2 → Phase-6/v3 isolated bootstrap PASS; version-2 backup rejection PASS; version-3 binary SQLite backup/restore validated; no functional regression detected; ADR-004 same-version semantics preserved.
+- **Source-Control Handoff:** PHASE 6 RELEASE QUALIFIED. Qualified source revision: `63bf47a329ecb78631165a2d677119ff39e105e4`.
 - **Supported Release Boundary:** `Windows / local / source-based runtime`. Standalone executable/installer packaging remains deferred.
-- **Release Blockers:** NONE in code; Phase 6 completion accepted by external Project Control; awaiting source-release requalification.
+- **Release Blockers:** NONE. Zero Phase 6 blockers remain.
 - **Remote Publication:** Remote publication is a separate explicitly authorized action; target revisions have not been pushed to `origin/main`.
 - **Preserved Accepted Non-Blocking Debt:**
   - 1 High `source-map-js` advisory in the production dependency graph (`GHSA-68fv-2mgg-jv7q`): reaches dependency graph through Next/PostCSS/CSS-build tooling; QA found no known path from untrusted runtime input to the vulnerable behavior; presently assessed as build-time-only / not production-runtime reachable; no functional or security exploit was demonstrated against the supported local runtime; classified as non-blocking dependency/security debt for this release.

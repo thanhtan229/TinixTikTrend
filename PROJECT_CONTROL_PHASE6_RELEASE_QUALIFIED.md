@@ -8,7 +8,7 @@
 > - **Phase 6 Source-Release Qualification:** **`READY WITH DOCUMENTED NON-BLOCKING ISSUES`**
 > - **Authoritative Final Remediation Commit:** `1bd1e5ddcb8999861ae43b9eb8775681f07edd6d` (`1bd1e5d`)
 > - **Authoritative Completion Reconciliation Commit:** `734b07be296c7613f9928b5e994a84525cd2135f` (`734b07b`)
-> - **Qualified HEAD Revision:** `734b07be296c7613f9928b5e994a84525cd2135f`
+> - **Qualified Source Revision:** `63bf47a329ecb78631165a2d677119ff39e105e4` (`63bf47a`)
 > - **Supported Release Boundary:** `Windows / local / source-based runtime`
 > - **Packaging Status:** Standalone executable/installer packaging remains deferred (`.exe` packaging deferred)
 > - **Remote Publication Status:** Local repository only (zero remote push; `origin/main` untouched)

@@ -17,7 +17,7 @@
 > **Previous Remediation Commit:** `2603deb16af57cf5931ac801fd9ff21fb8cdde37`  
 > **Target / Implemented Compatibility:** `"3"`  
 > **Completion Status:** **`COMPLETE / ACCEPTED`**  
-> **Source-Release Qualification:** **`PENDING REQUALIFICATION`** (prior qualification superseded by remediation changes)  
+> **Source-Release Qualification:** **`READY WITH DOCUMENTED NON-BLOCKING ISSUES`** (Requalification completed at revision `63bf47a329ecb78631165a2d677119ff39e105e4`; see [`PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md))  
 > **Phase 7 Implementation Status:** **`NOT AUTHORIZED`** (documents remain provisional)  
 
 ---
@@ -100,3 +100,12 @@ The following items are preserved as accepted non-blocking debt:
 - All Phase 7 documents ([`PHASE_7_PLAN.md`](PHASE_7_PLAN.md), ADR-006, Research) remain **`PROVISIONAL — NOT YET ACCEPTED BY EXTERNAL PROJECT CONTROL`**.
 - Phase 7 implementation is **`NOT AUTHORIZED`**.
 - Zero Phase 7 production code or executable tests exist in the repository.
+
+---
+
+## 6. Release-State Handoff & Lifecycle Closure
+
+- Phase 6 Source-Release Requalification completed by `QA — Build & Release` at qualified source revision `63bf47a329ecb78631165a2d677119ff39e105e4`.
+- Source-release readiness: **`READY WITH DOCUMENTED NON-BLOCKING ISSUES`**.
+- Formal qualification record: [`PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE6_RELEASE_QUALIFIED.md).
+- Phase 6 lifecycle status: **`PHASE 6 LIFECYCLE CLOSED`**.

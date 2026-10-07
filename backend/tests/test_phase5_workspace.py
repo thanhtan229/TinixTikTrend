@@ -882,7 +882,10 @@ def test_p5_ac_26_27_additive_bootstrap_marker_advance_and_idempotency(tmp_path,
     inspector = inspect(engine)
     post_tables = set(inspector.get_table_names())
     diff = post_tables - pre_tables
-    assert diff == {"collections", "collection_items", "saved_views", "economics_scenarios"}
+    assert diff == {
+        "collections", "collection_items", "saved_views", "economics_scenarios",
+        "tiktok_videos", "video_snapshots",
+    }
 
     # Verify representative Phase 1-4 data preserved
     with Session() as s:

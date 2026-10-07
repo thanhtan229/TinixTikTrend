@@ -13,6 +13,7 @@ from app.models.collection import Collection
 from app.models.collection_item import CollectionItem
 from app.models.saved_view import SavedView
 from app.models.economics_scenario import EconomicsScenario
+from app.models.tiktok_video import TikTokVideo, VideoSnapshot
 
 __all__ = [
     "Base",
@@ -30,4 +31,6 @@ __all__ = [
     "CollectionItem",
     "SavedView",
     "EconomicsScenario",
+    "TikTokVideo",
+    "VideoSnapshot",
 ]

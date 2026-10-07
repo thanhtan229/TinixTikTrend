@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, Index
+from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -38,6 +38,7 @@ class ProductVideoLink(Base):
 
     __table_args__ = (
         Index("ix_pvl_product_video", "product_id", "external_video_id"),
+        UniqueConstraint("product_id", "external_video_id", name="uq_pvl_product_video"),
     )
 
     def __repr__(self) -> str:

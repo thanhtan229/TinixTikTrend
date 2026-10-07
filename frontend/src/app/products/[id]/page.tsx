@@ -24,6 +24,7 @@ import {
 import { ProductHistory } from "@/components/ProductHistory";
 import { AddToCollectionModal } from "@/components/AddToCollectionModal";
 import { ProductEconomicsSection } from "@/components/ProductEconomicsSection";
+import { ProductVideosSection } from "@/components/ProductVideosSection";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -357,6 +358,8 @@ export default function ProductDetailPage() {
         productTitle={product.title}
         latestPriceVnd={deltas.latest_price != null ? Math.round(deltas.latest_price) : null}
       />
+
+      <ProductVideosSection productId={product.id} />
 
       <ProductHistory snapshots={product.snapshots || []} productId={product.id} />
 

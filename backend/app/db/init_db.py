@@ -1,4 +1,4 @@
-from sqlalchemy import select, inspect
+from sqlalchemy import select, inspect, text
 from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
@@ -36,7 +36,8 @@ def init_db(db: Session = None) -> None:
     Initialize database schema (creates tables if they do not exist) and seed default categories.
     """
     # Create all tables
-    Base.metadata.create_all(bind=db.get_bind() if db is not None else engine)
+    bind = db.get_bind() if db is not None else engine
+    Base.metadata.create_all(bind=bind)
     
     close_db = False
     if db is None:
@@ -44,6 +45,22 @@ def init_db(db: Session = None) -> None:
         close_db = True
         
     try:
+        # create_all does not add constraints to pre-existing tables. This additive
+        # unique index enforces one association per product/video pair after checking
+        # that legacy data has no duplicates.
+        duplicate_link = db.execute(text(
+            "SELECT product_id, external_video_id FROM product_video_links "
+            "GROUP BY product_id, external_video_id HAVING COUNT(*) > 1 LIMIT 1"
+        )).first()
+        if duplicate_link:
+            raise RuntimeError(
+                "Cannot enforce unique product/video links: duplicate legacy association "
+                f"for product {duplicate_link[0]} and video {duplicate_link[1]}."
+            )
+        db.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_pvl_product_video "
+            "ON product_video_links (product_id, external_video_id)"
+        ))
         # This additive table preserves every product and historical snapshot.
         contaminated = db.query(Product).filter(
             (Product.external_product_id.startswith("tt_item_")) |

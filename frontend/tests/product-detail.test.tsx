@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProductDetailPage from '@/app/products/[id]/page';
-import { fetchProductDetail, fetchWatchStatus, fetchAlertRules } from '@/lib/api';
+import { fetchProductDetail, fetchProductVideos, fetchWatchStatus, fetchAlertRules } from '@/lib/api';
 
 vi.mock('next/navigation', () => ({ useParams: () => ({ id: '21' }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -9,6 +9,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     fetchProductDetail: vi.fn(),
+    fetchProductVideos: vi.fn().mockResolvedValue([]),
     fetchWatchStatus: vi.fn().mockResolvedValue({ is_watched: false }),
     fetchAlertRules: vi.fn().mockResolvedValue([]),
   };
@@ -48,6 +49,7 @@ const product = {
 describe('product detail recovery', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(fetchProductVideos).mockResolvedValue([]);
     vi.mocked(fetchWatchStatus).mockResolvedValue({ product_id: 21, is_watched: false });
     vi.mocked(fetchAlertRules).mockResolvedValue([]);
   });

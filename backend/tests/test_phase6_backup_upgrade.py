@@ -10,57 +10,72 @@ from app.db.init_db import init_db
 from app.models.product import Product
 from app.models.system_metadata import SystemMetadata
 from app.models.economics_scenario import EconomicsScenario
+from app.models.tiktok_video import TikTokVideo, VideoSnapshot
 from app.services.backup_service import BackupService
 
 
-def test_isolated_v2_to_v3_bootstrap_and_schema_verification(tmp_path: Path):
+def test_isolated_v3_to_v4_bootstrap_and_schema_verification(tmp_path: Path):
     """
     Workstream 3 / P6-AC-35..38:
-    Verify additive bootstrap from v2 to v3 in an isolated database:
+    Verify additive bootstrap from v3 to v4 in an isolated database:
     - Pre-existing products preserved.
-    - economics_scenarios table created additively.
+    - TikTok metadata and snapshot tables created additively.
     - Required schema derived dynamically passes.
-    - portable_backup_compatibility_version advanced from '2' to '3'.
+    - portable_backup_compatibility_version advanced from '3' to '4'.
     """
     db_file = tmp_path / "v2_upgrade_test.db"
     engine = create_engine(f"sqlite:///{db_file}")
 
-    # Create tables without economics_scenarios initially to simulate v2 database
-    Base.metadata.create_all(bind=engine)
+    # Simulate a Phase 6 database before the Phase 7 video tables existed.
+    Base.metadata.create_all(
+        bind=engine,
+        tables=[table for table in Base.metadata.sorted_tables
+                if table.name not in {"tiktok_videos", "video_snapshots"}],
+    )
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Simulate existing v2 data
+    # Simulate existing v3 data.
     prod = Product(
         platform="tiktok_shop",
-        external_product_id="prod_v2_1001",
-        title="Test Product From V2",
+        external_product_id="prod_v3_1001",
+        title="Test Product From V3",
         first_seen_at=datetime.now(timezone.utc),
         last_seen_at=datetime.now(timezone.utc),
     )
     session.add(prod)
-    session.add(SystemMetadata(key="portable_backup_compatibility_version", value="2"))
+    session.add(SystemMetadata(key="portable_backup_compatibility_version", value="3"))
     session.commit()
 
-    # Verify initial v2 state
+    # Verify initial v3 state and missing video tables.
     marker = session.get(SystemMetadata, "portable_backup_compatibility_version")
     assert marker is not None
-    assert marker.value == "2"
+    assert marker.value == "3"
+    assert "tiktok_videos" not in inspect(engine).get_table_names()
+    assert "video_snapshots" not in inspect(engine).get_table_names()
 
     # Run init_db on the existing session
     init_db(session)
 
-    # Verify marker advanced to "3"
+    # Verify marker advanced to "4".
     marker_after = session.get(SystemMetadata, "portable_backup_compatibility_version")
-    assert marker_after.value == "3"
+    assert marker_after.value == "4"
 
     # Verify product preserved
-    p_check = session.query(Product).filter_by(external_product_id="prod_v2_1001").first()
+    p_check = session.query(Product).filter_by(external_product_id="prod_v3_1001").first()
     assert p_check is not None
-    assert p_check.title == "Test Product From V2"
+    assert p_check.title == "Test Product From V3"
 
-    # Verify economics_scenarios table exists and has expected columns
+    # Verify video and economics tables are present with required columns.
     inspector = inspect(engine)
+    assert "tiktok_videos" in inspector.get_table_names()
+    assert "video_snapshots" in inspector.get_table_names()
+    assert {col["name"] for col in inspector.get_columns("tiktok_videos")} >= {
+        "video_id", "canonical_url", "description", "thumbnail_url",
+    }
+    assert {col["name"] for col in inspector.get_columns("video_snapshots")} >= {
+        "video_id", "captured_at", "view_count", "like_count",
+    }
     assert "economics_scenarios" in inspector.get_table_names()
     cols = {col["name"] for col in inspector.get_columns("economics_scenarios")}
     assert "commission_rate_bps" in cols
@@ -76,40 +91,43 @@ def test_isolated_v2_to_v3_bootstrap_and_schema_verification(tmp_path: Path):
     engine.dispose()
 
 
-def test_v2_backup_rejected_by_v3_validation(tmp_path: Path):
+def test_v3_backup_rejected_by_v4_validation(tmp_path: Path):
     """
     ADR-004 & Phase 6 invariant:
-    Backups with compatibility version '2' are rejected by v3 engine during validation.
+    Backups with compatibility version '3' are rejected by v4 engine during validation.
     """
-    db_file = tmp_path / "v2_backup.sqlite3"
+    db_file = tmp_path / "v3_backup.sqlite3"
     engine = create_engine(f"sqlite:///{db_file}")
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Seed v2 compatibility marker
-    session.add(SystemMetadata(key="portable_backup_compatibility_version", value="2"))
+    # Seed v3 compatibility marker.
+    session.add(SystemMetadata(key="portable_backup_compatibility_version", value="3"))
     session.commit()
     session.close()
     engine.dispose()
 
-    # Validate against BackupService (which expects '3')
+    # Validate against BackupService (which expects '4').
     is_valid, msg = BackupService.validate_sqlite_file(db_file)
     assert is_valid is False
-    assert "Phiên bản tương thích không hợp lệ (yêu cầu '3', tìm thấy '2')" in msg
+    assert "Phiên bản tương thích không hợp lệ (yêu cầu '4', tìm thấy '3')" in msg
 
 
-def test_v3_backup_roundtrip_validation(tmp_path: Path):
+def test_v4_backup_roundtrip_validation(tmp_path: Path):
     """
-    Verify creating and validating a v3 backup succeeds.
+    Verify creating and validating a v4 backup succeeds.
     """
-    source_db = tmp_path / "v3_source.db"
+    source_db = tmp_path / "v4_source.db"
     engine = create_engine(f"sqlite:///{source_db}")
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    session.add(SystemMetadata(key="portable_backup_compatibility_version", value="3"))
+    session.add(SystemMetadata(
+        key="portable_backup_compatibility_version",
+        value=BackupService.COMPATIBILITY_VERSION,
+    ))
     session.commit()
     session.close()
     engine.dispose()
@@ -120,7 +138,7 @@ def test_v3_backup_roundtrip_validation(tmp_path: Path):
     assert result["status"] == "ok"
     backup_file = backup_dir / result["filename"]
     assert backup_file.exists()
-    assert "tinix-affiliate-v3-" in result["filename"]
+    assert "tinix-affiliate-v4-" in result["filename"]
 
     # Validate backup file
     is_valid, msg = BackupService.validate_sqlite_file(backup_file)
@@ -128,15 +146,15 @@ def test_v3_backup_roundtrip_validation(tmp_path: Path):
     assert msg == "Hợp lệ"
 
 
-def test_isolated_v3_restore_and_disaster_recovery_lifecycle(tmp_path: Path, monkeypatch):
+def test_isolated_v4_restore_and_disaster_recovery_lifecycle(tmp_path: Path, monkeypatch):
     """
     Workstream 3 / ADR-004 Remediation:
-    Isolated disaster recovery and restore lifecycle test for Phase 6 v3 economics data:
-    1. Pre-restore safety backup creation with v3 naming.
+    Isolated disaster recovery and restore lifecycle test for Phase 7 v4 schema:
+    1. Pre-restore safety backup creation with v4 naming.
     2. Atomic replacement of live database file.
     3. Restore manifest tracking and pre-start guard enforcement.
     4. Injected post-replacement failure causing rollback to safety backup.
-    5. Verified preservation of v3 economics scenarios.
+    5. Verified preservation of economics scenarios.
     6. Exclusion of host-bound tiktok-session.json.
     7. Zero touches to real backend/affiliate.db.
     """
@@ -151,12 +169,15 @@ def test_isolated_v3_restore_and_disaster_recovery_lifecycle(tmp_path: Path, mon
     backups_dir = tmp_path / "backups"
     backups_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Initialize isolated target database with Phase 6 v3 economics data
+    # 1. Initialize isolated target database with Phase 6 economics data
     target_engine = create_engine(f"sqlite:///{target_db}")
     Base.metadata.create_all(bind=target_engine)
     TargetSession = sessionmaker(bind=target_engine)
     with TargetSession() as s:
-        s.add(SystemMetadata(key="portable_backup_compatibility_version", value="3"))
+        s.add(SystemMetadata(
+            key="portable_backup_compatibility_version",
+            value=BackupService.COMPATIBILITY_VERSION,
+        ))
         prod = Product(
             id=101,
             platform="tiktok_shop",
@@ -178,13 +199,16 @@ def test_isolated_v3_restore_and_disaster_recovery_lifecycle(tmp_path: Path, mon
         s.commit()
     target_engine.dispose()
 
-    # 2. Prepare candidate database with different v3 economics data
+    # 2. Prepare candidate database with different economics data
     cand_db = tmp_path / "cand_affiliate.db"
     cand_engine = create_engine(f"sqlite:///{cand_db}")
     Base.metadata.create_all(bind=cand_engine)
     CandSession = sessionmaker(bind=cand_engine)
     with CandSession() as s:
-        s.add(SystemMetadata(key="portable_backup_compatibility_version", value="3"))
+        s.add(SystemMetadata(
+            key="portable_backup_compatibility_version",
+            value=BackupService.COMPATIBILITY_VERSION,
+        ))
         prod_cand = Product(
             id=202,
             platform="tiktok_shop",
@@ -207,7 +231,7 @@ def test_isolated_v3_restore_and_disaster_recovery_lifecycle(tmp_path: Path, mon
         s.commit()
     cand_engine.dispose()
 
-    # Create managed v3 backup from candidate DB
+    # Create managed v4 backup from candidate DB.
     cand_res = BackupService.create_backup(source_db_path=cand_db, target_dir=backups_dir)
     assert cand_res["status"] == "ok"
     candidate_backup_file = backups_dir / cand_res["filename"]
@@ -233,7 +257,7 @@ def test_isolated_v3_restore_and_disaster_recovery_lifecycle(tmp_path: Path, mon
     ))
     assert create_safety_code == 0
     assert safety_backup_file.exists()
-    assert "tinix-pre-restore-v3-" in safety_backup_file.name
+    assert "tinix-pre-restore-v4-" in safety_backup_file.name
 
     # Safety backup collision prevention (cannot overwrite existing safety backup)
     assert restore_helper.cmd_create_safety_backup(SimpleNamespace(
@@ -307,4 +331,3 @@ def test_isolated_v3_restore_and_disaster_recovery_lifecycle(tmp_path: Path, mon
     # 9. Session artifact exclusion check
     assert not (backups_dir / "tiktok-session.json").exists()
     assert fake_session.exists()  # Local session was not touched
-

@@ -10,12 +10,12 @@ from app.core.logging import logger, log_event
 from app.db.base import Base
 import app.models  # Ensure all SQLAlchemy models are registered on Base.metadata
 
-BACKUP_FILENAME_PATTERN = re.compile(r"^tinix-affiliate-v[123]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
-SAFETY_BACKUP_PATTERN = re.compile(r"^tinix-pre-restore-v[123]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
+BACKUP_FILENAME_PATTERN = re.compile(r"^tinix-affiliate-v[1234]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
+SAFETY_BACKUP_PATTERN = re.compile(r"^tinix-pre-restore-v[1234]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
 
 
 class BackupService:
-    COMPATIBILITY_VERSION: str = "3"
+    COMPATIBILITY_VERSION: str = "4"
 
     @classmethod
     def get_required_schema(cls) -> Dict[str, Set[str]]:

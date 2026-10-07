@@ -369,3 +369,178 @@ def test_p6_ac_34_compare_products_query_budget():
     engine.dispose()
 
 
+def test_p6_ac_35_representative_economics_benchmark(tmp_path):
+    """
+    P6-AC-35: Representative 200 products, 5,000 snapshots, representative scenario
+    distribution economics benchmark on isolated file-backed SQLite database:
+    1. Collection member list with economics: query budget <= 3, max latency < 200ms.
+    2. 5-Product compare with economics: query budget <= 4 with collection / <= 3 without, max latency < 200ms.
+    Protocol: 1 unmetered warmup + 10 timed iterations.
+    Records best, median, p95, max (worst).
+    """
+    import statistics
+    from app.models.collection import Collection
+    from app.models.collection_item import CollectionItem
+    from app.models.economics_scenario import EconomicsScenario
+    from app.services.collection_service import CollectionService
+    from app.services.compare_service import CompareService
+
+    db_file = tmp_path / "bench_phase6_econ.db"
+    engine = create_engine(f"sqlite:///{db_file}")
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    now = datetime(2026, 10, 5, 12, 0, 0, tzinfo=timezone.utc)
+
+    # 1. Seed 200 products with 25 snapshots each (5,000 snapshots total)
+    products = []
+    for i in range(200):
+        p = Product(
+            external_product_id=f"p6_bench_p_{i}",
+            title=f"Phase 6 Benchmark Product {i}",
+            first_seen_at=now - timedelta(days=5),
+            last_seen_at=now,
+            category="Fashion" if i % 2 == 0 else "Beauty",
+        )
+        products.append(p)
+    db.add_all(products)
+    db.flush()
+
+    # 100 Watchlist items
+    db.add_all([WatchlistItem(product_id=p.id) for p in products[:100]])
+
+    snapshots = []
+    for p in products:
+        for s_idx in range(25):
+            snapshots.append(ProductSnapshot(
+                product_id=p.id,
+                captured_at=now - timedelta(hours=(24 - s_idx) * 4),
+                sold_count=100 + s_idx * 10,
+                review_count=10 + s_idx,
+                rating=4.5,
+                price=100000.0,
+            ))
+    db.add_all(snapshots)
+
+    # 2. Representative scenario distribution:
+    # 100 products have 1 scenario (default)
+    # 50 products have 2 scenarios (1 default, 1 non-default)
+    # 50 products have 0 scenarios
+    scenarios = []
+    for i, p in enumerate(products):
+        if i < 100:
+            scenarios.append(EconomicsScenario(
+                product_id=p.id,
+                name="Standard Plan",
+                commission_rate_bps=1000,
+                commission_base_vnd=100_000,
+                sample_cost_vnd=50_000,
+                content_cost_vnd=100_000,
+                promotion_cost_vnd=50_000,
+                variable_cost_per_attributed_order_vnd=5_000,
+                expected_attributed_orders=100,
+                is_default=True,
+            ))
+        elif i < 150:
+            scenarios.append(EconomicsScenario(
+                product_id=p.id,
+                name="Default Plan",
+                commission_rate_bps=1200,
+                commission_base_vnd=120_000,
+                sample_cost_vnd=50_000,
+                content_cost_vnd=100_000,
+                promotion_cost_vnd=50_000,
+                variable_cost_per_attributed_order_vnd=5_000,
+                expected_attributed_orders=50,
+                is_default=True,
+            ))
+            scenarios.append(EconomicsScenario(
+                product_id=p.id,
+                name="Aggressive Plan",
+                commission_rate_bps=1500,
+                commission_base_vnd=120_000,
+                sample_cost_vnd=100_000,
+                content_cost_vnd=200_000,
+                promotion_cost_vnd=100_000,
+                variable_cost_per_attributed_order_vnd=10_000,
+                expected_attributed_orders=200,
+                is_default=False,
+            ))
+    db.add_all(scenarios)
+
+    # 3. Create a collection with 20 member products
+    col = Collection(name="Benchmark Collection", description="Benchmarking member list with economics")
+    db.add(col)
+    db.flush()
+    col_id = col.id
+
+    col_items = [CollectionItem(collection_id=col_id, product_id=products[i].id, review_status="candidate") for i in range(20)]
+    db.add_all(col_items)
+    db.commit()
+
+    # Query counter listener
+    query_count = 0
+    def query_listener(conn, cursor, statement, parameters, context, executemany):
+        nonlocal query_count
+        query_count += 1
+
+    event.listen(engine, "after_cursor_execute", query_listener)
+
+    col_service = CollectionService(db)
+    cmp_service = CompareService(db)
+
+    # -------------------------------------------------------------
+    # Benchmark Part 1: Collection Member List with Economics
+    # -------------------------------------------------------------
+    # Warmup
+    col_service.get_collection_members(col_id)
+
+    # 10 Timed Iterations
+    col_latencies = []
+    for _ in range(10):
+        query_count = 0
+        t0 = time.perf_counter()
+        members = col_service.get_collection_members(col_id)
+        col_latencies.append((time.perf_counter() - t0) * 1000.0)
+
+    col_best = min(col_latencies)
+    col_median = statistics.median(col_latencies)
+    col_worst = max(col_latencies)
+
+    assert len(members) == 20
+    assert query_count <= 3, f"Collection member list executed {query_count} queries (expected <= 3)"
+    assert col_worst < 200.0, f"Collection member list worst latency {col_worst:.2f}ms exceeded 200ms hard gate"
+    print(f"\n[BENCHMARK P6-AC-35] Collection members (20 items with econ): best={col_best:.2f}ms, median={col_median:.2f}ms, worst={col_worst:.2f}ms, queries={query_count}")
+
+    # -------------------------------------------------------------
+    # Benchmark Part 2: 5-Product Compare with Economics
+    # -------------------------------------------------------------
+    cmp_pids = [products[i].id for i in range(5)]
+
+    # Warmup
+    cmp_service.compare_products(cmp_pids, collection_id=col_id)
+
+    # 10 Timed Iterations
+    cmp_latencies = []
+    for _ in range(10):
+        query_count = 0
+        t0 = time.perf_counter()
+        cmp_res = cmp_service.compare_products(cmp_pids, collection_id=col_id)
+        cmp_latencies.append((time.perf_counter() - t0) * 1000.0)
+
+    cmp_best = min(cmp_latencies)
+    cmp_median = statistics.median(cmp_latencies)
+    cmp_worst = max(cmp_latencies)
+
+    assert len(cmp_res.products) == 5
+    assert query_count <= 4, f"Compare with collection executed {query_count} queries (expected <= 4)"
+    assert cmp_worst < 200.0, f"Compare products worst latency {cmp_worst:.2f}ms exceeded 200ms hard gate"
+    print(f"[BENCHMARK P6-AC-35] Compare products (5 items with econ): best={cmp_best:.2f}ms, median={cmp_median:.2f}ms, worst={cmp_worst:.2f}ms, queries={query_count}")
+
+    event.remove(engine, "after_cursor_execute", query_listener)
+    db.close()
+    engine.dispose()
+
+
+

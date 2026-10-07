@@ -303,15 +303,16 @@ All release acceptance criteria are now validated under the revised acceptance c
     - Saved View V1 schemas, alert rules, and crawler unchanged for MVP.
     - No official Affiliate API/OAuth in MVP; no private dashboard scraping; no new third-party dependencies.
 
-- **Phase 6 Authoritative Plan & Approval:**
+- **Phase 6 Authoritative Plan, Implementation & Acceptance:**
   - Authoritative Plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md)
   - Plan Status: `APPROVED`
-  - Implementation Status: `AUTHORIZED`
+  - Implementation Status: `COMPLETE / ACCEPTED`
   - Approved Plan Revision Baseline: `4713fa422eb7f407b78995a9d453711910efc354`
-  - Project Control Approval Record: [`PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md`](PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md)
-  - Authoritative Acceptance Criteria: 42 criteria (`P6-AC-01` through `P6-AC-42`), covering domain separation, exact integer ratio rounding, deterministic concurrency, proxy provenance, query budgets, v2->v3 bootstrap, and ADR-004 restore/recovery safety.
-  - Workstreams: 10 dependency-ordered workstreams (WS-0 through WS-9).
-  - Implementation is authorized to proceed strictly against the approved plan.
+  - Authoritative Completion Report: [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md)
+  - Project Control Completion Acceptance Record: [`PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md)
+  - Authoritative Acceptance Criteria: 42 criteria (`P6-AC-01` through `P6-AC-42`), all 42 passing and accepted.
+  - Workstreams: 10 dependency-ordered workstreams (WS-0 through WS-9) fully completed.
+  - Portable Backup Compatibility: Advanced from `"2"` to `"3"` in `system_metadata`.
 
 
 - **Preserved Architecture Boundaries:**
@@ -325,7 +326,7 @@ All release acceptance criteria are now validated under the revised acceptance c
   - Phase 5 Saved View contracts;
   - Transient Compare semantics;
   - Shared Compare `as_of_utc`;
-  - Compatibility version `"2"` until Phase 6 implementation explicitly advances it to `"3"`.
+  - Compatibility version `"3"` active with same-version restore strictly enforced.
 
 - **Preserved Debt & Deferred State:**
   - 1 High `source-map-js` advisory in the production dependency graph (build-time-only / non-runtime-reachable);
@@ -335,7 +336,7 @@ All release acceptance criteria are now validated under the revised acceptance c
   - Broad discovery/CAPTCHA limitations deferred;
   - Standalone executable packaging deferred;
   - Cloud/multi-user deferred;
-  - Previous Phase 5 out-of-scope items unless Phase 6 later explicitly selects one through approved scope.
+  - Previous Phase 5 out-of-scope items unless explicitly selected in a future phase.
 
 ---
 
@@ -344,16 +345,17 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Project Control Final QA Decision (Historical):** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (for baseline commit `4bdc1bc842f7a4ab2ce671f2923f7d2dc4989936`).
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
 - **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
-- **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (Project Control accepted the repository-aware QA report; prior QA-environment availability blocker closed; qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md); historical blocked record preserved in [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)).
-- **Active Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`PLAN APPROVED / IMPLEMENTATION AUTHORIZED`; research `CLOSED / ACCEPTED`, ADR-005 `ACCEPTED`, product direction `RECOMMEND WITH REVISED SCOPE — ACCEPTED`, architecture gate `CLOSED / ACCEPTED`, plan `APPROVED` via [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md), approved plan baseline `4713fa422eb7f407b78995a9d453711910efc354`, 42 acceptance criteria `P6-AC-01` through `P6-AC-42`, approval record [`PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md`](PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md); implementation is authorized to proceed; current product compatibility remains `"2"`; target Phase 6 compatibility is `"3"` upon schema implementation). Selecting, researching, planning, and implementing Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md); research acceptance record: [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md); ADR-005 acceptance record: [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md); research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md); authoritative ADR: [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md); authoritative plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md).
-- **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` in currently implemented product remains `"2"`); ADR-005 now `ACCEPTED` (selects target compatibility `"3"` for future Phase 6 schema); `ARCHITECTURE.md` updated with Phase 6 architecture section.
-- **QA Code & Runtime Qualification:** PASS. Backend 178/178 pytest PASS (focused Phase 5 suite 25/25 PASS), Frontend 46/46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 3 SQL queries with Collection context / 2 without; Saved View apply: 0 additional queries; Zero N+1; representative Compare benchmark (200 products / 5,000 snapshots / 5-product compare: best 4.42ms, median 5.14ms, p95 5.42ms, worst 5.42ms; <200ms hard gate PASS, <50ms research target PASS); Phase-4/v1 → Phase-5/v2 isolated bootstrap PASS; version-1 backup rejection PASS; version-2 backup/restore round-trip PASS; no functional regression detected; ADR-003 unchanged; ADR-004 same-version semantics unchanged.
-- **Source-Control Handoff:** QUALIFIED / RECONCILED. Qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.
+- **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md)).
+- **Phase 6 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md), all 42 criteria `P6-AC-01` through `P6-AC-42` accepted; formal completion acceptance record: [`PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md); completion report: [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md)).
+- **Active Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`COMPLETE / ACCEPTED`; awaiting source-release qualification pass). Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md); research acceptance record: [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md); ADR-005 acceptance record: [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md); research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md); authoritative ADR: [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md); authoritative plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md); completion report: [`PHASE_6_COMPLETION_REPORT.md`](PHASE_6_COMPLETION_REPORT.md); completion acceptance record: [`PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_COMPLETION_ACCEPTED.md).
+- **Architecture & ADRs:** ADR-003, ADR-004, and ADR-005 active; `portable_backup_compatibility_version` in implemented product is now `"3"`; `ARCHITECTURE.md` updated with Phase 6 architecture section.
+- **QA Code & Runtime Qualification:** PASS. Backend 218/218 pytest PASS, Frontend 52/52 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 4 SQL queries; Zero N+1; representative benchmarks: Collections 1.96ms, Compare 5.37ms (<200ms hard gate PASS, <50ms research target PASS); Phase-5/v2 → Phase-6/v3 isolated bootstrap PASS; version-2 backup rejection PASS; version-3 backup/restore validated; no functional regression detected; ADR-004 same-version semantics preserved.
+- **Source-Control Handoff:** Implementation accepted; awaiting formal Phase 6 release qualification pass.
 - **Supported Release Boundary:** `Windows / local / source-based runtime`. Standalone executable/installer packaging remains deferred.
-- **Release Blockers:** NONE. Prior QA-environment availability blocker closed by repository-aware QA. Zero product/code/architecture blockers exist.
+- **Release Blockers:** NONE. Zero product/code/architecture blockers exist.
 - **Remote Publication:** Remote publication is a separate explicitly authorized action; target revisions have not been pushed to `origin/main`.
 - **Preserved Accepted Non-Blocking Debt:**
-  - 1 High `source-map-js` advisory in the production dependency graph (`GHSA-68fv-2mgg-jv7q`): reaches dependency graph through Next/PostCSS/CSS-build tooling; QA found no known path from untrusted runtime input to the vulnerable behavior; presently assessed as build-time-only / not production-runtime reachable; no functional or security exploit was demonstrated against the supported local runtime; classified as non-blocking dependency/security debt for this release (earlier claims of 0 production vulnerabilities superseded).
+  - 1 High `source-map-js` advisory in the production dependency graph (`GHSA-68fv-2mgg-jv7q`): reaches dependency graph through Next/PostCSS/CSS-build tooling; QA found no known path from untrusted runtime input to the vulnerable behavior; presently assessed as build-time-only / not production-runtime reachable; no functional or security exploit was demonstrated against the supported local runtime; classified as non-blocking dependency/security debt for this release.
   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies (`tailwindcss@3.4.19` and `eslint-config-next@15.5.27`, zero production runtime reachability).
   - `StarletteDeprecationWarning` during test execution (`httpx` integration with `starlette.testclient`).
   - Runtime `PRAGMA foreign_keys = 0` (`OFF`) maintained for cross-phase operational stability.
@@ -365,8 +367,9 @@ All release acceptance criteria are now validated under the revised acceptance c
   - Broad automatic discovery / CAPTCHA bypass deferred.
   - Real 7-day field observation deferred.
   - Browser DB transfer deferred (operator launcher CLI `BACKUP.bat` / `RESTORE.bat` only).
-  - Cross-version database migrations deferred (same-version restore enforced via compatibility marker "2").
+  - Cross-version database migrations deferred (same-version restore enforced via compatibility marker "3").
   - TikTok session portability deferred (host-bound local session isolated from backups/exports).
   - Standalone executable/installer packaging deferred (local Windows source-based runtime).
   - Phase 5 deferred items (tags, persisted compare, compare charts, AI recommendations, URL sync, collection archiving).
+  - Phase 6 deferred items (Creator Center/private dashboard scraping, official TikTok Shop Affiliate API/OAuth, automated commission rate syncing, multi-currency / non-VND, custom formula builder, line-item cost breakdown tables, commission history/audit tables).
   - All other previously documented deferred items.

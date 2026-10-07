@@ -3,6 +3,7 @@
 Status: `DRAFT / PROJECT CONTROL REVIEW REQUIRED`  
 Roadmap reference: `PROJECT_CONTROL_PHASE6_SELECTION.md` / `PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md` / `PROJECT_CONTROL_ADR005_ACCEPTED.md` / latest reconciled `PLAN.md` / `PROJECT_STATUS.md`  
 Created: `2026-10-06`  
+Last revised: `2026-10-07` (Remediated against Project Control Findings A–N)  
 Implementation authorization: **NOT AUTHORIZED**  
 Project Control approval: **PENDING**  
 
@@ -83,12 +84,15 @@ This plan is strictly constrained by the accepted conclusions of [`research/PHAS
 2. **Attribution Boundary:** Market demand is not creator attribution. `sales_velocity × commission_per_order` is prohibited.
 3. **Manual-First Strategy:** Economics assumptions are user-defined. `ProductSnapshot.commission_rate` is not an automatic calculation authority.
 4. **VND-Only & Whole Integers:** Currency is whole VND only; commission rates are whole basis points ($10,000\text{ bps} = 100\%$).
-5. **Single New Model:** Exactly one new database table: `economics_scenarios`.
-6. **Exactly-One-Default Invariant:** When $\ge 1$ scenarios exist for a Product, exactly one default scenario exists. First scenario auto-defaults; deleting the default deterministically promotes the oldest remaining scenario by `(created_at ASC, id ASC)`.
-7. **Single Backend Calculation Authority:** All formulas and rounding (round-half-up whole VND) execute on read in backend authority. Derived results are never persisted.
-8. **Frozen Observed-Price Proxy:** Current Product price may be copied as a labeled, timestamped frozen proxy. It does not auto-mutate on crawler runs.
-9. **Dynamic Schema & Compatibility Advance `"2" → "3"`:** Adding `economics_scenarios` triggers an advance of `portable_backup_compatibility_version` from `"2"` to `"3"` under ADR-004 same-version restore rules.
-10. **Query Budgets (Zero N+1):** Collection member list with economics $\le 3$ SQL queries; Compare with economics $\le 3$ queries (without Collection) / $\le 4$ queries (with Collection).
+5. **Lossless Integer Arithmetic:** Backend calculations use pure integer ratio and ceiling arithmetic without passing through binary float.
+6. **Lossless API & JS Safe-Integer Contract:** All persisted and derived monetary figures fit strictly within $[0, \text{Number.MAX_SAFE_INTEGER}]$ ($< 9 \times 10^{15}$).
+7. **Single New Model:** Exactly one new database table: `economics_scenarios`.
+8. **Deterministic Concurrency & Exactly-One-Default Invariant:** When $\ge 1$ scenarios exist for a Product, exactly one default scenario exists. First scenario auto-defaults; deleting the default deterministically promotes the oldest remaining scenario by `(created_at ASC, id ASC)`. Transactional retries and partial unique index enforce this at runtime and database levels.
+9. **Strict Provenance & Mutation Contract:** Generic updates cannot forge proxy sources, timestamps, or toggle default status. Manual commission base edits reset provenance to `user_entered`.
+10. **Single Backend Calculation Authority:** All formulas and rounding (round-half-up whole VND via integer ratios) execute on read in backend authority. Derived results are never persisted.
+11. **Frozen Observed-Price Proxy:** Current Product price may be copied as a labeled, timestamped frozen proxy. It does not auto-mutate on crawler runs.
+12. **Dynamic Schema & Compatibility Advance `"2" → "3"`:** Adding `economics_scenarios` triggers an advance of `portable_backup_compatibility_version` from `"2"` to `"3"` under ADR-004 same-version restore rules.
+13. **Query Budgets (Zero N+1):** Collection member list with economics $\le 3$ SQL queries; Compare with economics $\le 3$ queries (without Collection) / $\le 4$ queries (with Collection). Zero HTTP fanout.
 
 ---
 
@@ -152,33 +156,34 @@ Phase 6 MVP is strictly manual-first:
 - Deleting a non-default preserves the existing default.
 - Deleting the current default when alternatives remain atomically promotes the oldest remaining scenario by `(created_at ASC, id ASC)`.
 - Deleting the sole scenario leaves 0 scenarios and 0 defaults.
-- Explicit concurrency handling and test matrix covering race conditions, simultaneous creates, and rollback guarantees.
+- Deterministic concurrency handling with bounded transaction retries (`BEGIN IMMEDIATE`) and structured HTTP 409 Conflict mapping.
 
-#### 3. Pure Calculation Engine & Rounding Authority
+#### 3. Pure Calculation Engine & Integer Arithmetic
 - Single deterministic pure calculation module (`app.analytics.economics`).
-- Exact rational arithmetic with `RATE_SCALE = 10_000`.
-- Single backend rounding policy: round-half-up to nearest whole VND (`round_half_up_vnd`).
+- Pure integer ratio arithmetic with `RATE_SCALE = 10_000`; never passes intermediate calculations through binary `float`.
+- Integer-based round-half-up to nearest whole VND: $(2N + D) // (2D)$ for numerator $N$ and denominator $D$.
 - Calculations:
   - Estimated commission per attributable order;
   - Total fixed campaign cost;
   - Unit contribution margin per attributable order;
-  - Break-even attributable orders using exact rational contribution numerator;
+  - Break-even attributable orders using exact integer numerator and ceiling division $(A + B - 1) // B$;
   - Expected gross commission, expected variable cost, expected net contribution;
   - Scenario return on cost ratio.
 - Strict null propagation (missing required inputs yield `null`; unknown $\ne 0$; explicit $0$ is valid).
 - Zero persisted derived values in database.
 
-#### 4. REST API Surface
+#### 4. REST API Surface & Mutation Security
 - Product-scoped scenario endpoints:
   - `GET /api/products/{product_id}/economics` (list scenarios with derived metrics);
   - `POST /api/products/{product_id}/economics` (create scenario);
   - `GET /api/products/{product_id}/economics/{scenario_id}` (get single scenario with derived metrics);
   - `PATCH /api/products/{product_id}/economics/{scenario_id}` (update scenario assumptions);
-  - `POST /api/products/{product_id}/economics/{scenario_id}/duplicate` (duplicate scenario);
+  - `POST /api/products/{product_id}/economics/{scenario_id}/duplicate` (duplicate scenario with validated new name);
   - `DELETE /api/products/{product_id}/economics/{scenario_id}` (delete scenario with deterministic promotion);
   - `POST /api/products/{product_id}/economics/{scenario_id}/set-default` (atomically set default scenario);
   - `POST /api/products/{product_id}/economics/{scenario_id}/rebase-price` (explicitly rebase/freeze latest observed Product price).
-- Strict error mapping: HTTP 404 (missing product/scenario), HTTP 400 (quarantined product, price unavailable), HTTP 409 (duplicate scenario name, concurrency conflict), HTTP 422 (validation out-of-bounds).
+- Strict mutation contract: Client cannot forge proxy source or timestamp. Generic PATCH cannot write `is_default` or proxy metadata. Editing base amount resets source to `user_entered` and clears timestamp.
+- Strict error mapping: HTTP 404 (missing product/scenario), HTTP 400 (quarantined product, price unavailable), HTTP 409 (duplicate scenario name, concurrency conflict), HTTP 422 (validation out-of-bounds, fractional bps).
 
 #### 5. User Interface (Product Detail, Collections, Compare)
 - **Product Detail Workspace:**
@@ -186,10 +191,10 @@ Phase 6 MVP is strictly manual-first:
   - Scenario selector tabs/dropdown;
   - Create, Edit, Duplicate, Delete scenario controls;
   - Set Default action and visual default badge;
-  - Assumption inputs with whole-VND formatting and commission rate percentage input;
+  - Assumption inputs with whole-VND formatting and commission rate percentage input (max 2 decimal places);
   - Action to capture/freeze latest observed Product price as proxy;
   - Clear provenance labels: `User assumption`, `Observed price proxy`, `Scenario estimate`, `Missing`;
-  - Commercial disclosure: actual payouts differ due to buyer discounts, refunds, cancellations, and settlement context;
+  - Commercial disclosure banner: actual payouts differ due to buyer discounts, refunds, cancellations, and settlement context;
   - Derived unit economics cards, break-even order callout, and optional expected campaign metrics;
   - UI stale-response protection, loading states, visible error handling, retry buttons.
 - **Collections Integration:**
@@ -208,8 +213,10 @@ Phase 6 MVP is strictly manual-first:
 - Durable compatibility marker transition:
   $$\text{portable\_backup\_compatibility\_version: } \mathbf{"2" \longrightarrow "3"}$$
 - Unchanged ADR-004 same-version restore enforcement:
-  - Version `"2"` backups rejected with HTTP 400 before destructive restore;
+  - Version `"2"` backups rejected with HTTP 400 (API preflight) and exit code 1 (launcher pre-validation) before destructive restore;
   - Version `"3"` backups round-trip validated across scenarios, assumptions, nulls, defaults, and provenance;
+  - Pre-restore safety backup created with SQLite online backup engine before file replacement;
+  - Atomic replacement with manifest tracking and rollback on post-replacement failure;
   - Host-bound TikTok session strictly excluded.
 
 ### 5.2 Explicit Scope Exclusions (Out of Scope)
@@ -300,35 +307,44 @@ ON economics_scenarios(product_id)
 WHERE is_default = 1;
 ```
 
-### 7.3 Column Definitions & Constraints
+### 7.3 Column Definitions, Safe-Integer Bounds & Semantics
 
-| Column Name | Type | Nullable | Default | Description / Bounds |
+To guarantee that all inputs and calculated values remain strictly within JavaScript `Number.MAX_SAFE_INTEGER` ($9,007,199,254,740,991 \approx 9 \times 10^{15}$), the plan freezes bounded validation ranges:
+
+| Column Name | Type | Nullable | Default | Bounds & Safe Limits |
 | :--- | :--- | :---: | :---: | :--- |
 | `id` | `INTEGER` | No | PK | Surrogate integer primary key |
 | `product_id` | `INTEGER` | No | — | Foreign key to `products.id` (`ON DELETE CASCADE`) |
 | `name` | `VARCHAR(255)` | No | — | Scenario label. Unique per product (`1..255` chars) |
-| `commission_rate_bps` | `INTEGER` | Yes | `NULL` | Commission rate in basis points ($0 \dots 10,000$). $10,000\text{ bps} = 100\%$ |
-| `commission_base_vnd` | `INTEGER` | Yes | `NULL` | Commission base per order in whole VND ($0 \le \text{base} \le 10^{12}$) |
-| `commission_base_source` | `VARCHAR(32)` | No | `'user_entered'` | Provenance: `'user_entered'` or `'observed_price_proxy'` |
+| `commission_rate_bps` | `INTEGER` | Yes | `NULL` | Commission rate in basis points: $0 \le \text{bps} \le 10,000$ ($10,000\text{ bps} = 100\%$) |
+| `commission_base_vnd` | `INTEGER` | Yes | `NULL` | Commission base per order in whole VND: $0 \le \text{base} \le 100,000,000,000$ ($100$ billion VND) |
+| `commission_base_source` | `VARCHAR(32)` | No | `'user_entered'` | Provenance: strictly `'user_entered'` or `'observed_price_proxy'` |
 | `commission_base_observed_at`| `TIMESTAMP` | Yes | `NULL` | UTC snapshot timestamp if proxy; `NULL` if manual |
-| `sample_cost_vnd` | `INTEGER` | Yes | `NULL` | Fixed sample/product acquisition cost ($0 \le \text{cost} \le 10^{12}$) |
-| `content_cost_vnd` | `INTEGER` | Yes | `NULL` | Fixed content production cost ($0 \le \text{cost} \le 10^{12}$) |
-| `promotion_cost_vnd` | `INTEGER` | Yes | `NULL` | Fixed campaign ad spend ($0 \le \text{cost} \le 10^{12}$) |
-| `variable_cost_per_attributed_order_vnd` | `INTEGER` | Yes | `NULL` | Variable cost per order ($0 \le \text{cost} \le 10^{12}$) |
-| `expected_attributed_orders`| `INTEGER` | Yes | `NULL` | User-assumed order count ($0 \le \text{orders} \le 10^7$) |
+| `sample_cost_vnd` | `INTEGER` | Yes | `NULL` | Fixed sample cost: $0 \le \text{cost} \le 100,000,000,000$ VND |
+| `content_cost_vnd` | `INTEGER` | Yes | `NULL` | Fixed content production cost: $0 \le \text{cost} \le 100,000,000,000$ VND |
+| `promotion_cost_vnd` | `INTEGER` | Yes | `NULL` | Fixed campaign ad spend: $0 \le \text{cost} \le 100,000,000,000$ VND |
+| `variable_cost_per_attributed_order_vnd` | `INTEGER` | Yes | `NULL` | Variable cost per order: $0 \le \text{cost} \le 100,000,000,000$ VND |
+| `expected_attributed_orders`| `INTEGER` | Yes | `NULL` | User-assumed order count: $0 \le \text{orders} \le 1,000,000$ ($1$ million orders) |
 | `is_default` | `BOOLEAN` | No | `0` | Default scenario flag for Collection/Compare summary |
 | `created_at` | `TIMESTAMP` | No | UTC now | Record creation timestamp (UTC) |
 | `updated_at` | `TIMESTAMP` | No | UTC now | Record last updated timestamp (UTC) |
 
-### 7.4 Field Validation & Semantics
-1. **Unknown $\ne$ Zero:** Missing assumptions remain `NULL`. Explicit zero (`0`) represents a deliberate user assertion that the cost or rate is zero (e.g., free sample, organic promotion, zero handling fee). Input schemas must never coerce `NULL` to `0`.
-2. **Numeric Bounds:**
-   - Money values cannot be negative: $\text{val} \ge 0$.
-   - Commission rate basis points: $0 \le \text{commission\_rate\_bps} \le 10,000$.
-   - Upper application bound: Money fields capped at $1,000,000,000,000$ VND ($1$ trillion VND) to prevent payload abuse or 64-bit integer overflow.
-   - Expected orders: $0 \le \text{expected\_attributed\_orders} \le 10,000,000$.
-3. **No Persisted Derived Values:** No columns for calculated commission, contribution margin, break-even orders, net profit, or return on cost. All computed on read.
-4. **No Extra Tables:** No expense line items table, no economics history log table, no crawler commission tracking table.
+### 7.4 Lossless JavaScript / TypeScript Safe-Integer Guarantee
+Under the maximum bounds:
+- Max base: $10^{11}$ VND.
+- Max rate: $10,000\text{ bps} = 1.0$.
+- Max expected orders: $10^6$ orders.
+- Maximum possible expected gross commission:
+  $$\frac{10^{11} \times 10,000 \times 10^6}{10,000} = 10^{17} / 10^4 = 10^{13}\text{ VND} = 10,000,000,000,000\text{ VND}$$
+Because $10^{13} \ll 9.007 \times 10^{15}$ (`Number.MAX_SAFE_INTEGER`), **every derived monetary value in whole VND is guaranteed to be lossless in JSON and TypeScript `number`**. No 64-bit integer truncation or BigInt string-marshalling is required.
+
+### 7.5 Frontend Percentage to Basis Points Precision Contract
+- User input represents commission as a percentage string or number (e.g., `"12.5%"` or `12.5`).
+- Permitted precision: **At most 2 decimal places** in percentage representation (e.g., `12.34%` $\implies 1234\text{ bps}$, $0.01\% \implies 1\text{ bps}$).
+- Exact conversion: $\text{bps} = \operatorname{round}(\text{percent} \times 100)$.
+- Rejection policy: Fractional basis points are rejected with HTTP 422:
+  `"Tỷ lệ hoa hồng tối đa 2 chữ số thập phân (bội số của 0.01% / 1 basis point)."`
+- Float round-trip surprises are eliminated by parsing the percentage string directly or checking `abs(round(val * 100) - val * 100) < 1e-9`.
 
 ---
 
@@ -347,55 +363,53 @@ The default scenario invariant is a critical concurrency gate. The system guaran
    - If other scenarios remain for that Product, the service atomically deletes the default and promotes the **oldest remaining scenario** ordered by `(created_at ASC, id ASC)`.
    - If no other scenarios remain, the default is deleted and the Product returns to $0$ scenarios / $0$ defaults.
 
-### 8.2 Database Partial Unique Index Enforcement
-SQLite enforces at most one default per product at the database storage engine level:
-```sql
-CREATE UNIQUE INDEX uq_economics_scenarios_product_default 
-ON economics_scenarios(product_id) 
-WHERE is_default = 1;
-```
-If any concurrent transaction attempts to commit a second default scenario, SQLite raises an `IntegrityError`, preventing duplicate defaults.
+### 8.2 SQLite Concurrency Engine & Transaction Locking
+To eliminate concurrency deadlocks and partial unique index violations on SQLite:
+1. **Immediate Write Locking:** All scenario creation, default-switching, and deletion operations initiate transactions using `BEGIN IMMEDIATE` (via SQLAlchemy connection execution). This acquires a reserved SQLite lock immediately, preventing other connections from entering conflicting write states.
+2. **Bounded Service Retries:** If SQLite reports `sqlite3.OperationalError: database is locked` or `busy`, the service executes bounded retries (up to 3 attempts with 50ms, 100ms exponential backoff).
+3. **Partial Unique Index Violation Handling:** If a race condition triggers an `IntegrityError` on `uq_economics_scenarios_product_default`, the service rolls back cleanly. If retries are exhausted, it returns a structured HTTP 409 Conflict:
+   `"Xung đột kịch bản mặc định do thao tác đồng thời. Vui lòng thử lại."`
+4. **Atomicity Guarantee:** Deleting the default and promoting the oldest remaining scenario occurs inside a single transaction. If promotion fails, the entire deletion rolls back.
 
-### 8.3 Concurrency & Race Condition Handling Matrix
+### 8.3 Deterministic Concurrency Test Matrix (8 Required Scenarios)
 
-| Concurrency Scenario | Potential Hazard | Service & Transaction Orchestration | Outcome Guarantee |
+The test suite in `backend/tests/test_phase6_economics.py` must prove the following 8 cases using isolated file-backed SQLite databases, independent connections, and deterministic barriers (`threading.Barrier`):
+
+| Test Case | Concurrent Operations | Synchronization Mechanism | Expected Outcome & Invariant Check |
 | :--- | :--- | :--- | :--- |
-| **1. Two simultaneous first-scenario creates** | Both threads detect 0 existing scenarios; both attempt to commit `is_default = 1`. | Both execute inside a transaction. First thread commits `is_default = 1`. Second thread hits `IntegrityError` on `uq_economics_scenarios_product_default`. | Second thread catches partial unique violation, rolls back, retries inside a clean transaction, observes 1 existing scenario, and inserts as `is_default = 0`. Exactly 1 default remains. |
-| **2. Simultaneous create with explicit `is_default=true`** | Two threads try to create new scenarios and promote both to default. | Both execute default clearing and insertion. First commits. Second hits `IntegrityError` or re-clears and commits. | Serializable transaction or immediate retry. Exactly 1 default remains. |
-| **3. Simultaneous `set-default` on different rows** | Thread A sets Scenario 1 as default; Thread B sets Scenario 2 as default. | Each executes `UPDATE economics_scenarios SET is_default = 0 WHERE product_id = :p` followed by `UPDATE economics_scenarios SET is_default = 1 WHERE id = :target`. | Last committed transaction wins cleanly. Partial unique index prevents interleaving. Exactly 1 default remains. |
-| **4. `set-default` racing with `delete-default`** | Thread A deletes Scenario 1 (current default); Thread B sets Scenario 2 as default. | Thread A begins promotion of oldest remaining; Thread B explicitly promotes Scenario 2. | Transaction boundary serializes execution via SQLite table locking. Both result in valid target state. Exactly 1 default remains. |
-| **5. `delete-default` racing with scenario creation** | Thread A deletes the sole scenario; Thread B creates Scenario 2. | Thread A leaves 0 scenarios; Thread B creates first scenario and auto-promotes to default. | If Thread B commits before Thread A, Thread A's deletion promotes Scenario 2. In all commit orderings: exactly 1 default. |
-| **6. Transaction rollback mid-operation** | System crashes or error occurs after clearing defaults but before setting target default. | Default clearing and target setting are executed inside a single `with db.begin():` block. | Uncommitted changes roll back completely to the previous committed state. Product never remains with 0 defaults. |
-| **7. Partial unique index violation** | Raw concurrent statement bypasses service checks. | SQLite raises `IntegrityError`. | Mapped to HTTP 409 Conflict with structured retry guidance. No corrupt state persisted. |
+| **Case 1: Concurrent First Scenario Create** | Thread 1 and Thread 2 simultaneously create Scenario A and Scenario B on a product with 0 scenarios. | Barrier before `db.commit()` | Both transactions succeed or one retries. Exactly 2 scenarios created; **exactly 1 default exists**. |
+| **Case 2: Concurrent Create Requesting Default** | Thread 1 and Thread 2 simultaneously create Scenario A (`is_default=True`) and Scenario B (`is_default=True`). | Barrier before commit | Serialized via lock/retry. Both scenarios exist; **exactly 1 default exists** (last committed wins). |
+| **Case 3: Simultaneous Set-Default Different Targets** | Thread 1 sets Scenario A as default; Thread 2 sets Scenario B as default. | Barrier after clearing default | Serialized via `BEGIN IMMEDIATE`. **Exactly 1 default exists**. No duplicate default violation. |
+| **Case 4: Set-Default Racing with Delete-Current-Default** | Thread 1 sets Scenario B as default; Thread 2 deletes current default Scenario A. | Barrier mid-transaction | Serialized cleanly. Oldest remaining promoted or Scenario B committed as default. **Exactly 1 default exists**. |
+| **Case 5: Delete-Default Racing with Scenario Create** | Thread 1 deletes sole Scenario A; Thread 2 creates Scenario B. | Barrier before commit | If Thread 1 commits first: product has Scenario B as default. If Thread 2 commits first: deletion of A promotes B. **Exactly 1 default exists**. |
+| **Case 6: Injected Rollback on Promotion** | Delete Scenario A (default); inject exception before promoting Scenario B. | Mock/hook raising exception | Entire transaction rolls back. Scenario A remains in DB with `is_default = 1`. **Zero scenarios left without default**. |
+| **Case 7: Direct Partial Unique Index Violation** | Raw SQL statement attempting to insert a second `is_default = 1` row for the same product. | Direct SQL execute | SQLite raises `sqlite3.IntegrityError` on `uq_economics_scenarios_product_default`. |
+| **Case 8: Retry Exhaustion & Error Mapping** | Artificially exhaust retries under simulated permanent lock. | Mocked lock error | Service returns structured HTTP 409 Conflict. Database remains uncorrupted. |
 
 ---
 
 ## 9. Numeric Representation & Calculation Engine
 
-### 9.1 Numeric Domain
-- **Money:** Stored as `INTEGER` whole VND. Eliminates binary floating-point representation errors (`0.1 + 0.2 != 0.3`).
-- **Commission Rate:** Stored as `INTEGER` basis points (`bps`):
-  $$100\text{ bps} = 1.00\%, \quad 1,250\text{ bps} = 12.50\%, \quad 10,000\text{ bps} = 100.00\%$$
-- **Expected Orders:** Stored as `INTEGER` ($\ge 0$).
+### 9.1 Exact Integer Ratio Arithmetic (Finding A)
+All economics calculations proceed through the pure module `app.analytics.economics`. To eliminate floating-point imprecision, calculations use **exact integer ratio arithmetic** without intermediate float conversions.
 
-### 9.2 Authoritative Rounding Policy: Round-Half-Up to Whole VND
-The project defines a single, deterministic backend rounding policy:
-$$\operatorname{round\_half\_up\_vnd}(x) = \left\lfloor x + 0.5 \right\rfloor$$
-Implemented using Python's `decimal.Decimal(str(x)).quantize(Decimal('1'), rounding=decimal.ROUND_HALF_UP)`. Python's native `round()` (bankers rounding / round-half-to-even) **MUST NOT** be used for monetary outputs.
+Let numerator $N$ and denominator $D$ be non-negative integers ($D > 0$).
+The authoritative round-half-up whole-VND rounding helper is defined purely over integers:
+$$\operatorname{round\_half\_up\_ratio}(N, D) = \left\lfloor \frac{2N + D}{2D} \right\rfloor = (2N + D) // (2D)$$
 
-#### Rounding Test Boundaries
-- Exact $.5$ boundary: $10.5 \to 11$, $11.5 \to 12$, $12.5 \to 13$.
-- Below $.5$ boundary: $10.4999 \to 10$.
-- Above $.5$ boundary: $10.5001 \to 11$.
-- Zero boundary: $0.0 \to 0$.
-- Large values: $999,999,999,999.5 \to 1,000,000,000,000$.
+#### Verification of Integer Rounding Vectors:
+- Exact $.5$ boundary: $N = 105, D = 10 \implies 10.5 \implies (210 + 10) // 20 = 220 // 20 = 11$.
+- Exact $.5$ boundary: $N = 115, D = 10 \implies 11.5 \implies (230 + 10) // 20 = 240 // 20 = 12$.
+- Below $.5$: $N = 104, D = 10 \implies 10.4 \implies (208 + 10) // 20 = 218 // 20 = 10$.
+- Above $.5$: $N = 106, D = 10 \implies 10.6 \implies (212 + 10) // 20 = 222 // 20 = 11$.
+- Zero: $N = 0, D = 10,000 \implies 0 \implies 10,000 // 20,000 = 0$.
+- Large values: $N = 999,999,999,995, D = 10 \implies (1,999,999,999,990 + 10) // 20 = 1,000,000,000,000$.
 
-### 9.3 Deterministic Formula Specifications
-
-All economics calculations proceed through the pure backend module `app.analytics.economics`.
+### 9.2 Authoritative Pure Calculation Formulas
 
 #### 1. Estimated Commission per Attributable Order
-$$\text{commission\_per\_order\_vnd} = \operatorname{round\_half\_up\_vnd}\left( \frac{\text{commission\_base\_vnd} \times \text{commission\_rate\_bps}}{10,000} \right)$$
+$$N = \text{commission\_base\_vnd} \times \text{commission\_rate\_bps}, \quad D = 10,000$$
+$$\text{commission\_per\_order\_vnd} = (2 \times N + 10,000) // 20,000$$
 - *Prerequisites:* `commission_base_vnd` and `commission_rate_bps` must both be non-null. Otherwise `NULL`.
 
 #### 2. Total Fixed Campaign Cost
@@ -406,19 +420,21 @@ $$\text{fixed\_campaign\_cost\_vnd} = \text{sample\_cost\_vnd} + \text{content\_
 $$\text{contribution\_per\_order\_vnd} = \text{commission\_per\_order\_vnd} - \text{variable\_cost\_per\_attributed\_order\_vnd}$$
 - *Prerequisites:* Requires non-null calculated commission per order and non-null variable cost. Otherwise `NULL`.
 
-#### 4. Break-Even Attributable Orders
-To prevent off-by-one errors caused by premature presentation rounding, break-even uses the exact rational contribution margin numerator:
+#### 4. Break-Even Attributable Orders (Exact Integer Ceiling Division)
+To eliminate off-by-one errors from premature rounding, break-even uses the exact integer numerator:
 $$\text{contrib\_num} = (\text{commission\_base\_vnd} \times \text{commission\_rate\_bps}) - (\text{variable\_cost\_per\_attributed\_order\_vnd} \times 10,000)$$
 
 If `fixed_campaign_cost_vnd` is known ($\ge 0$) and $\text{contrib\_num} > 0$:
-$$\text{break\_even\_orders} = \left\lceil \frac{\text{fixed\_campaign\_cost\_vnd} \times 10,000}{\text{contrib\_num}} \right\rceil$$
-
+- If $\text{fixed\_campaign\_cost\_vnd} == 0 \implies \text{break\_even\_orders} = 0$.
+- Else:
+  $$A = \text{fixed\_campaign\_cost\_vnd} \times 10,000, \quad B = \text{contrib\_num}$$
+  $$\text{break\_even\_orders} = (A + B - 1) // B$$
 - *Prerequisites:* If $\text{contrib\_num} \le 0$ (unit contribution is zero or negative), fixed costs are unknown, or inputs are incomplete, `break_even_orders` evaluates to `NULL`.
 
 #### 5. Expected Campaign Economics (Evaluated only when `expected_attributed_orders` is non-null)
 - **Expected Gross Commission:**
-  $$\text{expected\_commission\_vnd} = \operatorname{round\_half\_up\_vnd}\left( \frac{\text{commission\_base\_vnd} \times \text{commission\_rate\_bps} \times \text{expected\_attributed\_orders}}{10,000} \right)$$
-  *(Calculated using exact rational arithmetic and rounded once at final monetary output).*
+  $$N = \text{commission\_base\_vnd} \times \text{commission\_rate\_bps} \times \text{expected\_attributed\_orders}, \quad D = 10,000$$
+  $$\text{expected\_commission\_vnd} = (2 \times N + 10,000) // 20,000$$
 - **Expected Variable Cost:**
   $$\text{expected\_variable\_cost\_vnd} = \text{variable\_cost\_per\_attributed\_order\_vnd} \times \text{expected\_attributed\_orders}$$
 - **Expected Net Contribution:**
@@ -427,43 +443,42 @@ $$\text{break\_even\_orders} = \left\lceil \frac{\text{fixed\_campaign\_cost\_vn
 - **Scenario Return on Cost Ratio:**
   Let $\text{total\_campaign\_cost} = \text{fixed\_campaign\_cost\_vnd} + \text{expected\_variable\_cost\_vnd}$.  
   If $\text{total\_campaign\_cost} > 0$ and `expected_contribution_vnd` is known:
-  $$\text{return\_on\_cost\_ratio} = \frac{\text{expected\_contribution\_vnd}}{\text{total\_campaign\_cost}}$$
+  $$\text{return\_on\_cost\_ratio} = \operatorname{round}\left( \frac{\text{expected\_contribution\_vnd}}{\text{total\_campaign\_cost}}, 4 \right)$$
   Returned as a float ratio (e.g. $0.45 = +45\%$). Clearly labeled as a scenario estimate, never as guaranteed commercial ROI.
 
-### 9.4 Null Propagation Dependency Map
-
-```
-commission_base_vnd (NULL) ───────┬─► commission_per_order_vnd = NULL
-                                  ├─► contribution_per_order_vnd = NULL
-                                  ├─► break_even_orders = NULL
-                                  └─► expected_commission_vnd = NULL
-
-sample_cost_vnd (NULL) ───────────┬─► fixed_campaign_cost_vnd = NULL
-content_cost_vnd (NULL) ──────────┼─► break_even_orders = NULL
-promotion_cost_vnd (NULL) ────────┴─► expected_contribution_vnd = NULL
-
-expected_attributed_orders (NULL) ┬─► expected_commission_vnd = NULL
-                                  ├─► expected_variable_cost_vnd = NULL
-                                  ├─► expected_contribution_vnd = NULL
-                                  └─► return_on_cost_ratio = NULL
-```
-
-*Note:* Missing `expected_attributed_orders` does NOT invalidate unit economics (`commission_per_order_vnd`, `contribution_per_order_vnd`) or `break_even_orders`.
+### 9.3 Normalization Boundary for Legacy Snapshot Price
+When `ProductSnapshot.price: Float` is captured as an observed price proxy, it crosses the **single deliberate normalization boundary**:
+$$\text{commission\_base\_vnd} = \operatorname{int}\left( \operatorname{Decimal}(\operatorname{str}(\text{latest\_price})).quantize(\operatorname{Decimal}('1'), rounding=\operatorname{ROUND\_HALF\_UP}) \right)$$
+Once converted to whole-VND integer, all downstream scenario operations and calculations remain 100% integer arithmetic.
 
 ---
 
-## 10. Frozen Observed-Price Proxy Semantics
+## 10. Frozen Observed-Price Proxy & Provenance Mutation Contract
 
-When a user initializes or rebases a scenario using the current observed Product price:
-1. The backend inspects the latest available snapshot price: `analysis.deltas.latest_price`.
-2. If `latest_price` is missing or $\le 0$, the request fails with HTTP 400 Bad Request (`"No valid observed price available for this product"`).
-3. The float price is rounded to whole integer VND via `round_half_up_vnd(latest_price)` and stored in `commission_base_vnd`.
-4. Provenance is set: `commission_base_source = 'observed_price_proxy'`.
-5. The snapshot's capture timestamp is frozen into: `commission_base_observed_at = snapshot.captured_at`.
-6. Subsequent crawler runs, price discounts, or flash sales **DO NOT MUTATE** the scenario record.
-7. Re-synchronizing to newer market prices requires an explicit user action (`rebase-price`).
-8. For manually entered base amounts: `commission_base_source = 'user_entered'` and `commission_base_observed_at = NULL`.
-9. The backend validates that source/value/timestamp combinations cannot become contradictory.
+### 10.1 Provenance Mutation Rules (Finding D)
+To ensure provenance integrity and prevent forged client states:
+1. **Creation Semantics (`POST`):**
+   - If `use_observed_price = True`:
+     - Client **MUST NOT** provide `commission_base_vnd` (if provided, rejected with HTTP 422: `"Cannot supply manual commission_base_vnd when use_observed_price is true"`).
+     - Backend fetches `analysis.deltas.latest_price` from the latest committed snapshot.
+     - If snapshot or price is missing/invalid, request fails with HTTP 400 Bad Request.
+     - Normalizes float price to whole integer VND.
+     - Sets `commission_base_source = 'observed_price_proxy'`.
+     - Freezes `commission_base_observed_at = snapshot.captured_at` from the **exact same observation**.
+   - If `use_observed_price = False`:
+     - Sets `commission_base_source = 'user_entered'`.
+     - Sets `commission_base_observed_at = None`.
+2. **Generic Update Semantics (`PATCH`):**
+   - Schema `EconomicsScenarioUpdate` accepts only user assumptions: `name`, `commission_rate_bps`, `commission_base_vnd`, `sample_cost_vnd`, `content_cost_vnd`, `promotion_cost_vnd`, `variable_cost_per_attributed_order_vnd`, `expected_attributed_orders`.
+   - Client **CANNOT** write `commission_base_source` or `commission_base_observed_at`.
+   - Client **CANNOT** write `is_default` via PATCH (must use dedicated `set-default` endpoint).
+   - If `commission_base_vnd` is provided in PATCH:
+     - Automatically resets `commission_base_source = 'user_entered'`.
+     - Automatically resets `commission_base_observed_at = None`.
+3. **Rebase Proxy Action (`POST .../rebase-price`):**
+   - Dedicated endpoint to refresh the proxy from the latest available market price.
+   - Atomically updates `commission_base_vnd` and `commission_base_observed_at` from the latest snapshot. Sets source to `'observed_price_proxy'`.
+   - Fails with HTTP 400 if product has no valid snapshot price.
 
 ---
 
@@ -478,11 +493,11 @@ router = APIRouter(prefix="/products/{product_id}/economics", tags=["Economics"]
 ```
 
 1. `GET /api/products/{product_id}/economics`
-   - Returns all scenarios for the product ordered by `created_at ASC`, including calculated derived metrics on each scenario.
+   - Returns all scenarios for the product ordered by `created_at ASC`, including calculated derived metrics.
+   - Total SQL queries: $\le 2$ (Query 1: Product validation & quarantine check; Query 2: `SELECT * FROM economics_scenarios WHERE product_id = :id`).
    - Response: `List[EconomicsScenarioResponse]`
 2. `POST /api/products/{product_id}/economics`
    - Creates a new scenario for the product.
-   - If first scenario, auto-promotes to default.
    - Body: `EconomicsScenarioCreate`
    - Status: HTTP 201 Created
 3. `GET /api/products/{product_id}/economics/{scenario_id}`
@@ -493,8 +508,9 @@ router = APIRouter(prefix="/products/{product_id}/economics", tags=["Economics"]
    - Body: `EconomicsScenarioUpdate`
    - Response: `EconomicsScenarioResponse`
 5. `POST /api/products/{product_id}/economics/{scenario_id}/duplicate`
-   - Clones an existing scenario under a new unique name (e.g., `"{name} (Bản sao)"`).
-   - Cloned scenario defaults to `is_default = false`.
+   - Clones an existing scenario.
+   - Body: `EconomicsScenarioDuplicate(name=...)`. Caller supplies a unique name. If name already exists for that product, returns HTTP 409 Conflict.
+   - Cloned scenario always defaults to `is_default = false`.
    - Status: HTTP 201 Created
 6. `DELETE /api/products/{product_id}/economics/{scenario_id}`
    - Deletes scenario. If deleted scenario was default and other scenarios remain, atomically promotes the oldest remaining scenario.
@@ -503,7 +519,7 @@ router = APIRouter(prefix="/products/{product_id}/economics", tags=["Economics"]
    - Atomically promotes target scenario to default.
    - Response: `EconomicsScenarioResponse`
 8. `POST /api/products/{product_id}/economics/{scenario_id}/rebase-price`
-   - Fetches latest snapshot price, updates `commission_base_vnd`, sets `commission_base_source = 'observed_price_proxy'`, and updates `commission_base_observed_at`.
+   - Re-synchronizes commission base with latest observed snapshot price.
    - Response: `EconomicsScenarioResponse`
 
 ### 11.2 Pydantic Schemas
@@ -512,14 +528,27 @@ router = APIRouter(prefix="/products/{product_id}/economics", tags=["Economics"]
 class EconomicsScenarioCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     commission_rate_bps: Optional[int] = Field(None, ge=0, le=10000)
-    commission_base_vnd: Optional[int] = Field(None, ge=0, le=10**12)
+    commission_base_vnd: Optional[int] = Field(None, ge=0, le=10**11)
     use_observed_price: bool = False
-    sample_cost_vnd: Optional[int] = Field(None, ge=0, le=10**12)
-    content_cost_vnd: Optional[int] = Field(None, ge=0, le=10**12)
-    promotion_cost_vnd: Optional[int] = Field(None, ge=0, le=10**12)
-    variable_cost_per_attributed_order_vnd: Optional[int] = Field(None, ge=0, le=10**12)
-    expected_attributed_orders: Optional[int] = Field(None, ge=0, le=10**7)
+    sample_cost_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    content_cost_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    promotion_cost_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    variable_cost_per_attributed_order_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    expected_attributed_orders: Optional[int] = Field(None, ge=0, le=10**6)
     is_default: bool = False
+
+class EconomicsScenarioUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    commission_rate_bps: Optional[int] = Field(None, ge=0, le=10000)
+    commission_base_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    sample_cost_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    content_cost_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    promotion_cost_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    variable_cost_per_attributed_order_vnd: Optional[int] = Field(None, ge=0, le=10**11)
+    expected_attributed_orders: Optional[int] = Field(None, ge=0, le=10**6)
+
+class EconomicsScenarioDuplicate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
 
 class DerivedEconomics(BaseModel):
     commission_per_order_vnd: Optional[int] = None
@@ -554,12 +583,6 @@ class EconomicsScenarioResponse(BaseModel):
     derived: DerivedEconomics
 ```
 
-### 11.3 Error Handling & Status Codes
-- **HTTP 404 Not Found:** Product does not exist; Scenario does not exist; Scenario does not belong to specified `product_id`.
-- **HTTP 400 Bad Request:** Product is quarantined (`QuarantinedProduct`); No valid observed price available when `use_observed_price=True` or during `rebase-price`.
-- **HTTP 409 Conflict:** Scenario with this name already exists for this product (`uq_economics_scenarios_product_name`); Concurrent transaction conflict during default switching.
-- **HTTP 422 Unprocessable Entity:** Validation errors (e.g. `commission_rate_bps < 0` or `> 10000`, negative costs, empty name).
-
 ---
 
 ## 12. Frontend Workspace Design
@@ -572,7 +595,7 @@ Rendered directly within `frontend/src/app/products/[id]/page.tsx`:
    - Quick action buttons: `+ Tạo kịch bản`, `Nhân bản`, `Sửa`, `Xóa`, `Đặt làm mặc định`.
 2. **Assumption Editing Modal/Form:**
    - Input for scenario name.
-   - Commission rate input in percentage (e.g. `12.5%`), converted to basis points on save.
+   - Commission rate input in percentage (e.g. `12.5%`, max 2 decimals), converted to basis points on save. Rejects fractional bps.
    - Commission base VND input with a button: `Lấy giá hiển thị hiện tại` (triggers observed price proxy freeze).
    - Fixed cost inputs: Chi phí mẫu, Chi phí sản xuất nội dung, Chi phí quảng cáo/quảng bá.
    - Variable cost input: Chi phí biến đổi trên mỗi đơn hàng affiliate.
@@ -612,18 +635,19 @@ In `CompareModal.tsx` and `ComparedProductResponse`:
   - Đơn dự kiến & Lợi nhuận dự kiến
   - Tỷ suất sinh lời kịch bản
 - Products without scenarios display clean empty indicators (`—`).
+- Preserves selection order. Zero per-product HTTP fanout.
 - No blended comparison score or ranking.
 
 ---
 
-## 13. Query Budgets & Performance
+## 13. Query Budgets & Performance Methodology
 
 ### 13.1 Query Gate Boundaries (Zero N+1)
 All Phase 6 data access must adhere to strict query budgets:
 1. **Product Economics Scenarios:**
-   - Single query: `SELECT * FROM economics_scenarios WHERE product_id = :p ORDER BY created_at ASC`.
-   - Derived economics computed in Python in memory.
-   - **Budget: $\le 1$ SQL query.**
+   - $\le 1$ `economics_scenarios` query.
+   - Total SQL queries for endpoint $\le 2$ (Query 1: Product exists and not quarantined; Query 2: `SELECT * FROM economics_scenarios WHERE product_id = :id ORDER BY created_at ASC`).
+   - Derived economics computed in memory.
 2. **Collection Member List with Economics:**
    - Query 1: Collection exists check.
    - Query 2: Eager joinedload `CollectionItem -> Product -> WatchlistItem`.
@@ -635,22 +659,27 @@ All Phase 6 data access must adhere to strict query budgets:
    - Baseline with collection: 3 SQL queries.
    - Phase 6 adds 1 batched default scenario lookup:
      `SELECT * FROM economics_scenarios WHERE product_id IN (:ids) AND is_default = 1`.
-   - **Candidate Budgets:**
+   - **Budgets:**
      - Without collection context: **$\le 3$ SQL queries total**.
      - With collection context: **$\le 4$ SQL queries total**.
      - Zero N+1. Zero per-product HTTP fanout.
 
-### 13.2 Performance Benchmark Gates
-- Benchmark Fixture Lineage:
+### 13.2 Performance Benchmark Methodology (Finding L)
+- **Fixture Lineage:**
   - 200 Products;
   - 5,000 Product Snapshots;
   - 100 Watchlist items;
-  - Meaningful subset of products with Economics Scenarios (some with 1, some with 3+, some with 0);
-  - Isolated file-backed database fixture.
+  - Representative scenario distribution (some products with 1 scenario, some with 3+, some with 0);
+  - Isolated file-backed database fixture (`tmp_path`).
+- **Measurement Protocol:**
+  - 1 warmup iteration (unmetered);
+  - 10 timed iterations;
+  - Record full latency series: best, median, p95, worst (max), and exact query count.
 - **Hard Regression Gate:**
-  - Collection member list and 5-Product Compare with economics must execute strictly in **$< 200\text{ms}$** (median and best).
+  - Collection member list with economics: **max / worst $< 200\text{ms}$**.
+  - 5-Product Compare with economics: **max / worst $< 200\text{ms}$**.
 - **Optimization Target:**
-  - Measure and honestly report against the $< 50\text{ms}$ research target across 10 iterations (warmup = 1, reporting best, median, p95, worst).
+  - Report honestly against the $< 50\text{ms}$ research target (non-blocking optimization target).
 
 ---
 
@@ -673,40 +702,60 @@ A dedicated automated test (`backend/tests/test_phase6_backup_upgrade.py`) must 
 - Verifies `economics_scenarios` table and indexes are created.
 - All Phase 1–5 data (Products, Snapshots, Watchlist, Alert Rules, Alert Events, Collections, Collection Items, Saved Views, Quarantine) remains completely intact.
 - Marker advances to `"3"`.
-- Injecting a schema failure (e.g. failing table creation) leaves marker at `"2"` and aborts startup.
+- Injecting a schema failure leaves marker at `"2"` and aborts startup.
 
-### 14.3 Backup & Restore Policy (ADR-004 Unchanged)
-- **Same-Version Restore:** Version `"2"` backups are rejected with structured HTTP 400 when tested against a Phase 6 version `"3"` application before any destructive file operation.
-- **Round-Trip Integrity:** Version `"3"` backups preserve all scenarios, assumptions, null values, explicit zeros, default flags, and frozen price proxy timestamps.
+### 14.3 Backup & Restore Policy (ADR-004 Unchanged — Finding G)
+Under ADR-004's authoritative offline launcher-owned restore policy:
+- **Same-Version Restore:** Version `"2"` backups are rejected with HTTP 400 (API preflight) and exit code 1 (`RESTORE.bat` pre-validation) before stopping services or touching files.
+- **Pre-Restore Safety Backup:** Before destructive database replacement, `RESTORE.bat` executes an online SQLite backup (`tinix-pre-restore-v3-...sqlite3`).
+- **Atomic Replacement & Manifest Tracking:** Manifest at `backend/.local/restore/manifest.json` tracks status (`PENDING` $\to$ `COMPLETED`).
+- **Automated Rollback & Crash Recovery:** Injected failure after replacement triggers automated rollback to the pre-restore safety backup. Interrupted restores are recoverable via `RESTORE.bat --recover`.
+- **Round-Trip Integrity:** Version `"3"` backups preserve all scenarios, assumptions, nulls, explicit zeros, default flags, and frozen price proxy timestamps.
 - **Exclusion Guarantees:** Local TikTok session (`backend/.local/tiktok-session.json`) remains host-bound and strictly excluded from backups.
-- **Operator Documentation:** README/operator guides must state:
-  - Version `"2"` backups cannot be restored into Phase 6 application.
-  - Operators must run `BACKUP.bat` to create a fresh version `"3"` backup immediately following Phase 6 upgrade.
-  - Destructive tests must run exclusively on isolated temporary databases; never touch live `backend/affiliate.db`.
+- **Isolated Testing:** All destructive backup and restore tests execute on isolated temporary file-backed databases (`tmp_path`); never touch live `backend/affiliate.db`.
 
 ---
 
-## 15. Security, Privacy & Diagnostics
+## 15. Security, Privacy & Diagnostics (Finding H)
 
 1. **Local-First Privacy:** All financial assumptions, costs, and profit calculations are stored exclusively in the local SQLite database. No financial data is ever transmitted to external servers, cloud analytics, or TikTok endpoints.
 2. **Zero Credentials/Tokens:** Scenarios require no TikTok partner credentials, OAuth tokens, or payment details.
-3. **Safe Diagnostics:** `/api/diagnostics` includes safe table row counts only (`table_counts["economics_scenarios"] = ...`). No scenario names, commission rates, or financial figures are exposed via diagnostics.
+3. **Safe Diagnostics:** `/api/diagnostics` reports only safe aggregate table row counts (`table_counts["economics_scenarios"] = ...`). No scenario names, commission rates, cost figures, or derived outputs are exposed via diagnostics.
 4. **Preserved Security Debt:**
-   - 1 High `source-map-js` advisory (`GHSA-68fv-2mgg-jv7q`) in production dependency graph: remains classified as non-blocking build-time debt.
-   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies: remains classified as non-blocking development debt.
-   - `StarletteDeprecationWarning`: remains non-blocking.
+   - 1 High `source-map-js` advisory (`GHSA-68fv-2mgg-jv7q`) in production dependency graph: non-blocking build-time debt.
+   - Development-only `braces` advisory (`GHSA-vfj7-8cjw-p6xm`) in devDependencies: non-blocking development debt.
+   - `StarletteDeprecationWarning`: non-blocking.
    - Runtime `PRAGMA foreign_keys = 0`: preserved for stability.
 
 ---
 
-## 16. Authoritative Acceptance Criteria (P6-AC-01 to P6-AC-38)
+## 16. Mandatory Manual QA Matrix (Finding K)
 
-The following 38 acceptance criteria are unambiguous and testable. Implementation cannot be accepted until all criteria pass.
+Implementation qualification requires executing and verifying the following manual test matrix against the running development runtime:
+
+| Step | Test Area | User Action / Flow | Expected System Behavior |
+| :---: | :--- | :--- | :--- |
+| **M1** | Scenario Creation | Navigate to Product Detail $\to$ Click `+ Tạo kịch bản` $\to$ Enter Name, Rate (10%), Base (100,000 VND), Sample Cost (20,000 VND). | Scenario created, marked with default star badge. Unit economics display: Commission = 10,000 VND, Contribution = 10,000 VND, Fixed Cost = 20,000 VND, Break-Even = 2 orders. |
+| **M2** | Price Proxy Freeze | Click `+ Tạo kịch bản` $\to$ Click `Lấy giá hiển thị hiện tại` $\to$ Save. | Commission base field is populated with rounded VND snapshot price; provenance badge shows `Giá quan sát đóng băng` with capture timestamp. |
+| **M3** | Default Switching | Create Scenario B $\to$ Verify B has no default badge $\to$ Click `Đặt làm mặc định` on B. | Default star badge moves to B; Scenario A loses default badge. Collection and Compare immediately reflect B's metrics. |
+| **M4** | Default Promotion on Delete | Delete Scenario B (current default). | Scenario B deleted; Scenario A is automatically promoted to default and displays star badge. |
+| **M5** | Null vs Zero Semantics | Edit Scenario A $\to$ Set Promotion Cost to `0` $\to$ Leave Content Cost blank. | Fixed cost and Break-Even render `—` (Chưa thiết lập) because Content Cost is unknown. Promotion cost explicitly displays `0 đ`. |
+| **M6** | Input Bounds & Validation | Try to enter Commission Rate `100.5%` or negative cost `-1000`. | Frontend validation blocks submission or API returns clean validation error. |
+| **M7** | Price Rebase Action | In scenario with frozen proxy, click `Cập nhật theo giá mới nhất`. | Base price updates to latest snapshot; observation timestamp refreshes; toast notification confirms rebase. |
+| **M8** | Duplicate Scenario | Click `Nhân bản` $\to$ Enter unique name $\to$ Submit. | New scenario created with identical assumptions, `is_default = false`. |
+| **M9** | Collections Workspace | Open Collections $\to$ View member table containing the product. | Member row displays default scenario's Commission/order, Contribution/order, and Break-even orders. |
+| **M10**| Compare Workspace | Add 2–5 products to Compare Tray $\to$ Open Compare modal. | Economics row group displays each product's default scenario economics. Products with no scenarios show clean empty indicators (`—`). |
+| **M11**| Stale Response & Retry | Simulate slow network/API error during scenario fetch. | Visible error message displayed with a working `Thử tải lại` (Retry) button. |
+| **M12**| Accessibility & Focus | Use `Tab`, `Shift+Tab`, `Enter`, `Escape` to navigate workspace and modals. | Modals trap focus; `Escape` closes modal; focus restores to trigger button; all action buttons have clear aria labels. |
+
+---
+
+## 17. Authoritative Acceptance Criteria (P6-AC-01 to P6-AC-42 — Finding N)
 
 ### Domain Separation & Attribution Invariants
 - **`P6-AC-01` — Strict Domain Separation:**  
   *Requirement:* Economics scenario creation, editing, or deletion must have zero effect on Phase 2 Trend Score, trend state, momentum signals, evidence confidence, Why Trending reasons, Watchlist membership, scheduled refresh, or alert rule evaluation.  
-  *Evidence:* Automated test asserting identical trend scores and alert triggers before and after creating high-profit or zero-profit scenarios.  
+  *Evidence:* Automated test asserting identical trend scores and alert triggers before and after creating scenarios.  
   *Validation:* `backend/tests/test_phase6_economics.py`
 - **`P6-AC-02` — Attribution Inference Prohibition:**  
   *Requirement:* No backend or frontend code shall infer creator attributable orders, affiliate revenue, or campaign payback from market sold count or sales velocity. Prohibit `sales_velocity * commission`.  
@@ -722,8 +771,8 @@ The following 38 acceptance criteria are unambiguous and testable. Implementatio
   *Requirement:* Phase 6 introduces exactly one new table: `economics_scenarios`. No extra tables for line items, history, or calculation results.  
   *Evidence:* Database inspection verifying exactly `economics_scenarios` added to `Base.metadata.tables`.  
   *Validation:* `BackupService.get_required_schema()`.
-- **`P6-AC-05` — Numeric Types & Bounds Validation:**  
-  *Requirement:* Money fields persist as integer VND ($0 \le \text{cost} \le 10^{12}$). Commission rate persists as basis points ($0 \le \text{bps} \le 10,000$). Negative values or bps $>10,000$ are rejected with HTTP 422.  
+- **`P6-AC-05` — Numeric Types & Safe-Integer Bounds Validation:**  
+  *Requirement:* Money fields persist as integer VND ($0 \le \text{cost} \le 10^{11}$). Commission rate persists as basis points ($0 \le \text{bps} \le 10,000$). Negative values or out-of-bound values are rejected with HTTP 422. All values safely within `Number.MAX_SAFE_INTEGER`.  
   *Evidence:* API tests verifying boundary validation on create and update payloads.  
   *Validation:* API test suite.
 - **`P6-AC-06` — Null Preservation (Unknown $\ne$ Zero):**  
@@ -773,107 +822,123 @@ The following 38 acceptance criteria are unambiguous and testable. Implementatio
   *Evidence:* Direct raw SQL insert attempting two `is_default = 1` rows for same `product_id` raises `IntegrityError`.  
   *Validation:* Database test.
 - **`P6-AC-17` — Concurrency: Simultaneous First Scenario Creates:**  
-  *Requirement:* Two concurrent threads attempting first-scenario creation both succeed without leaving multiple defaults or deadlocks; exactly one becomes default.  
-  *Evidence:* Multi-threaded test asserting 2 created scenarios, exactly 1 default.  
+  *Requirement:* Two concurrent threads attempting first-scenario creation both succeed or retry cleanly; exactly one becomes default.  
+  *Evidence:* Multi-threaded test with barrier asserting 2 created scenarios, exactly 1 default.  
   *Validation:* Concurrency test suite.
 - **`P6-AC-18` — Concurrency: Race on Set-Default and Delete:**  
   *Requirement:* Concurrent `set-default` and `delete` operations maintain the exactly-one-default invariant without database corruption or dangling states.  
-  *Evidence:* Randomized multi-threaded stress test executing 20 concurrent operations on a product.  
+  *Evidence:* Multi-threaded barrier test verifying exactly 1 default committed.  
+  *Validation:* Concurrency test suite.
+- **`P6-AC-19` — Concurrency: Rollback Safety on Promotion:**  
+  *Requirement:* Injected failure during default promotion rolls back the entire transaction, preserving the original default.  
+  *Evidence:* Rollback injection test verifying no uncommitted or zero-default state.  
   *Validation:* Concurrency test suite.
 
 ### Calculation Engine, Precision & Rounding
-- **`P6-AC-19` — Authoritative Round-Half-Up whole VND:**  
-  *Requirement:* Backend rounds derived monetary outputs to whole VND using round-half-up. bankers rounding is prohibited.  
+- **`P6-AC-20` — Authoritative Exact Integer Ratio Rounding:**  
+  *Requirement:* Backend rounds derived monetary outputs to whole VND using exact integer ratio arithmetic $(2N + D) // (2D)$. Bankers rounding and binary float divisions are prohibited.  
   *Evidence:* Boundary tests verifying $10.5 \to 11$, $11.5 \to 12$, $10.49 \to 10$, $10.51 \to 11$.  
   *Validation:* `backend/tests/test_phase6_economics.py`.
-- **`P6-AC-20` — Commission per Order Formula:**  
-  *Requirement:* Evaluates $\operatorname{round\_half\_up\_vnd}(\text{base} \times \text{bps} / 10,000)$ when both inputs exist; otherwise `null`.  
-  *Evidence:* Exact arithmetic assertions across multiple test vectors.  
+- **`P6-AC-21` — Commission per Order Formula:**  
+  *Requirement:* Evaluates $(2N + 10,000) // 20,000$ when both base and bps exist; otherwise `null`.  
+  *Evidence:* Exact integer arithmetic assertions across test vectors.  
   *Validation:* Unit tests.
-- **`P6-AC-21` — Fixed Campaign Cost & Null Propagation:**  
+- **`P6-AC-22` — Fixed Campaign Cost & Null Propagation:**  
   *Requirement:* Evaluates sum of sample, content, and promotion costs only when all three are non-null/zero. If any is missing, fixed cost is `null`.  
   *Evidence:* Assertions with missing components returning `null`.  
   *Validation:* Unit tests.
-- **`P6-AC-22` — Contribution Margin per Order Formula:**  
+- **`P6-AC-23` — Contribution Margin per Order Formula:**  
   *Requirement:* Evaluates commission per order minus variable cost per order. If variable cost is unknown, evaluates to `null`.  
   *Evidence:* Unit test assertions.  
   *Validation:* Unit tests.
-- **`P6-AC-23` — Break-Even Attributable Orders Exact Math:**  
-  *Requirement:* Calculated using exact rational numerator $\operatorname{ceil}(\text{fixed\_cost} \times 10,000 / \text{contrib\_num})$. Returns `null` if $\text{contrib\_num} \le 0$ or fixed costs unknown.  
-  *Evidence:* Boundary test asserting exact integer output without off-by-one errors from intermediate rounding.  
+- **`P6-AC-24` — Break-Even Attributable Orders Exact Math:**  
+  *Requirement:* Calculated using exact integer ceiling division $(A + B - 1) // B$. Returns `null` if $\text{contrib\_num} \le 0$ or fixed costs unknown.  
+  *Evidence:* Boundary tests asserting exact integer output without off-by-one errors from intermediate float rounding.  
   *Validation:* Unit tests.
-- **`P6-AC-24` — Expected Campaign Economics:**  
-  *Requirement:* Expected gross commission, variable cost, net contribution, and return-on-cost evaluated only when `expected_attributed_orders` is non-null. Rounding applied once at final monetary output.  
+- **`P6-AC-25` — Expected Campaign Economics:**  
+  *Requirement:* Expected gross commission, variable cost, net contribution, and return-on-cost evaluated only when `expected_attributed_orders` is non-null. Exact integer arithmetic rounded once at final output.  
   *Evidence:* Verification of expected metrics against exact reference vectors.  
   *Validation:* Unit tests.
-- **`P6-AC-25` — Zero Persisted Calculations:**  
+- **`P6-AC-26` — Zero Persisted Calculations:**  
   *Requirement:* No calculated metrics are stored in database columns. Modifying assumptions instantly updates derived metrics on next read.  
   *Evidence:* DB inspection showing only raw input columns; updating rate immediately changes response.  
   *Validation:* Database test.
 
-### Frozen Observed-Price Proxy
-- **`P6-AC-26` — Observed-Price Proxy Freezing:**  
-  *Requirement:* Choosing observed price proxy copies latest snapshot price into `commission_base_vnd`, sets `commission_base_source = 'observed_price_proxy'`, and records snapshot timestamp.  
-  *Evidence:* API call with `use_observed_price=True` freezes current price and timestamp.  
+### Frozen Observed-Price Proxy & Provenance Mutation
+- **`P6-AC-27` — Observed-Price Proxy Freezing & Validation:**  
+  *Requirement:* Choosing `use_observed_price=True` freezes latest snapshot price and timestamp into scenario. Supplying manual base when `use_observed_price=True` is rejected with HTTP 422.  
+  *Evidence:* API call with `use_observed_price=True` freezes current price and timestamp; manual conflict rejected.  
   *Validation:* API test.
-- **`P6-AC-27` — Proxy Immutability Against Crawlers:**  
+- **`P6-AC-28` — Proxy Immutability Against Crawlers:**  
   *Requirement:* New crawler snapshots with different prices do not alter existing frozen proxy scenarios.  
   *Evidence:* Ingesting a new snapshot with 2x price does not mutate scenario's `commission_base_vnd`.  
   *Validation:* Integration test.
-- **`P6-AC-28` — Explicit Price Rebase:**  
+- **`P6-AC-29` — Provenance Reset on Manual Base Edit:**  
+  *Requirement:* Generic PATCH editing `commission_base_vnd` automatically resets `commission_base_source = 'user_entered'` and clears `commission_base_observed_at`. Client cannot forge source or timestamp.  
+  *Evidence:* PATCH test asserting provenance reset and rejection of forged provenance headers.  
+  *Validation:* API test.
+- **`P6-AC-30` — Deterministic Duplicate Semantics:**  
+  *Requirement:* `duplicate` endpoint accepts explicit `name`. If name is already taken, returns HTTP 409 Conflict. Cloned scenario defaults to `is_default = false`.  
+  *Evidence:* Duplicate test verifying unique name validation and non-default status.  
+  *Validation:* API test.
+- **`P6-AC-31` — Explicit Price Rebase:**  
   *Requirement:* `rebase-price` endpoint updates `commission_base_vnd` and `commission_base_observed_at` to latest snapshot price. Fails with HTTP 400 if product has no price.  
   *Evidence:* Rebase updates price to new snapshot timestamp.  
   *Validation:* API test.
 
 ### Workspace Integrations & Query Budgets
-- **`P6-AC-29` — Product Detail Economics Section UX:**  
-  *Requirement:* Product Detail renders scenario selector, create/edit modal, default marker, provenance labels (`User assumption`, `Observed price proxy`, `Missing`), commercial payout disclosure, and loading/retry states.  
+- **`P6-AC-32` — Product Detail Economics Section UX:**  
+  *Requirement:* Product Detail renders scenario switcher, create/edit modal, default marker, provenance labels (`User assumption`, `Observed price proxy`, `Missing`), commercial payout disclosure, and loading/retry states.  
   *Evidence:* Frontend Vitest component tests verifying rendered elements and user interactions.  
   *Validation:* `frontend/tests/phase6-economics.test.tsx`.
-- **`P6-AC-30` — Collections Integration & $\le 3$ Query Budget:**  
+- **`P6-AC-33` — Collections Integration & $\le 3$ Query Budget:**  
   *Requirement:* Collection member list displays default scenario summary via batched query. Query count $\le 3$ SQL queries total; zero N+1.  
   *Evidence:* Query listener assertion on collection member retrieval with economics.  
   *Validation:* `backend/tests/test_performance_and_queries.py`.
-- **`P6-AC-31` — Compare Integration & $\le 4$ Query Budget:**  
+- **`P6-AC-34` — Compare Integration & $\le 4$ Query Budget:**  
   *Requirement:* 5-Product compare renders default scenario economics columns. Query count $\le 3$ (without collection) / $\le 4$ (with collection). Zero N+1. Zero per-product HTTP fanout.  
   *Evidence:* Query listener assertion on CompareService call with economics.  
   *Validation:* `backend/tests/test_performance_and_queries.py`.
-- **`P6-AC-32` — Performance Regression Gate (<200ms):**  
-  *Requirement:* Collection member list and 5-Product compare on representative 200-product/5,000-snapshot fixture execute in $<200\text{ms}$.  
-  *Evidence:* Benchmark test reporting best, median, p95 latencies.  
+- **`P6-AC-35` — Performance Regression Gate (Max <200ms):**  
+  *Requirement:* Collection member list and 5-Product compare on representative 200-product/5,000-snapshot fixture execute with worst/max latency $<200\text{ms}$ across 10 iterations.  
+  *Evidence:* Benchmark test reporting best, median, p95, worst latencies.  
   *Validation:* Performance benchmark suite.
 
 ### Disaster Recovery, Bootstrap & Upgrades
-- **`P6-AC-33` — Additive Bootstrap & Compatibility Advance `"2" \to "3"`:**  
+- **`P6-AC-36` — Additive Bootstrap & Compatibility Advance `"2" \to "3"`:**  
   *Requirement:* Startup runs `create_all()`, verifies required schema dynamically, and advances compatibility marker from `"2"` to `"3"`. Injected failure leaves marker at `"2"` and aborts startup.  
   *Evidence:* Isolated bootstrap test verifying schema creation and marker transition.  
   *Validation:* `backend/tests/test_phase6_backup_upgrade.py`.
-- **`P6-AC-34` — Rejection of Version `"2"` Backups:**  
-  *Requirement:* Version `"2"` backups are rejected with HTTP 400 before stopping services or replacing database files.  
+- **`P6-AC-37` — Rejection of Version `"2"` Backups:**  
+  *Requirement:* Version `"2"` backups are rejected with HTTP 400 (API preflight) and exit code 1 (`RESTORE.bat` pre-validation) before stopping services or touching database files.  
   *Evidence:* Restore candidate validation test rejecting v2 backup on v3 application.  
   *Validation:* Backup test suite.
-- **`P6-AC-35` — Version `"3"` Backup Round-Trip Integrity:**  
-  *Requirement:* Creating a v3 backup and restoring into an empty database fully restores all scenarios, nulls, defaults, and provenance.  
+- **`P6-AC-38` — Pre-Restore Safety Backup & Atomic Replacement:**  
+  *Requirement:* `RESTORE.bat` creates a valid pre-restore safety backup before replacement. Injected failure post-replacement automatically rolls back to safety backup.  
+  *Evidence:* Rollback injection test on isolated file-backed database.  
+  *Validation:* Disaster recovery test suite.
+- **`P6-AC-39` — Version `"3"` Backup Round-Trip Integrity:**  
+  *Requirement:* Creating a v3 backup and restoring into an empty database fully restores all scenarios, nulls, defaults, and provenance. Local session remains excluded.  
   *Evidence:* Full backup creation, inspection, and restore round-trip test.  
   *Validation:* Backup test suite.
 
-### Non-Regression & Quality Verification
-- **`P6-AC-36` — Saved Views V1 & Alerts Non-Regression:**  
-  *Requirement:* Saved View V1 schemas remain unchanged. Phase 3 alert evaluation, triggers, and cursors remain completely unchanged.  
-  *Evidence:* Full Phase 3 and Phase 5 test suites pass cleanly without modifications.  
-  *Validation:* Existing test suites.
-- **`P6-AC-37` — Full Automated Test Suite Clean:**  
-  *Requirement:* All backend pytest (Phase 1–6) pass cleanly. All frontend Vitest pass cleanly. TypeScript typecheck clean (`tsc --noEmit`). ESLint clean (`npm run lint`). Production build clean (`npm run build`).  
-  *Evidence:* CLI test and build outputs.  
-  *Validation:* Validation test runner.
-- **`P6-AC-38` — Live Database Integrity Clean:**  
-  *Requirement:* `PRAGMA integrity_check` returns `ok`; `PRAGMA foreign_key_check` returns clean (`[]`).  
-  *Evidence:* SQLite pragma outputs on application database.  
-  *Validation:* Database integrity check.
+### Privacy, Documentation & Validation Discipline
+- **`P6-AC-40` — Safe Diagnostics & Zero Telemetry:**  
+  *Requirement:* `/api/diagnostics` reports only safe table row count for `economics_scenarios`. No scenario names, rates, costs, or assumptions exposed. Zero external network telemetry.  
+  *Evidence:* API diagnostics payload inspection test and network egress audit.  
+  *Validation:* `backend/tests/test_phase6_economics.py`.
+- **`P6-AC-41` — Operator Documentation Deliverables:**  
+  *Requirement:* `ARCHITECTURE.md` updated to document Phase 6 implementation; `README.md` updated with backup compatibility version `"3"`, v2 rejection notices, and session exclusion.  
+  *Evidence:* Git diff and document review.  
+  *Validation:* Documentation review.
+- **`P6-AC-42` — Full Test Suite, Health & Integrity Clean:**  
+  *Requirement:* Backend pytest (executed via repository venv python), frontend Vitest, TypeScript typecheck (`tsc --noEmit`), ESLint, Next.js build, `healthcheck.bat`, and SQLite integrity (`PRAGMA integrity_check`, `PRAGMA foreign_key_check`) all pass cleanly.  
+  *Evidence:* Clean CLI execution logs across all tools.  
+  *Validation:* Full validation runner.
 
 ---
 
-## 17. Implementation Sequencing & Workstreams
+## 18. Implementation Sequencing & Workstreams
 
 Implementation must proceed in strict dependency order across 10 workstreams:
 
@@ -916,7 +981,7 @@ Implementation must proceed in strict dependency order across 10 workstreams:
                             ▼
 ┌────────────────────────────────────────────────────────┐
 │ Workstream 9: Full Regression, Benchmark & Docs        │
-└────────────────────────────────────────────────────────┘
+└───────────────────────────┘
 ```
 
 ### Workstream 0: Baseline & Ancestry Verification
@@ -925,12 +990,12 @@ Implementation must proceed in strict dependency order across 10 workstreams:
 - **Dependencies:** None.
 
 ### Workstream 1: Pure Economics Calculation Engine & Precision Tests
-- **Objectives:** Create `backend/app/analytics/economics.py`. Implement `round_half_up_vnd`, exact rational math (`RATE_SCALE = 10_000`), unit commission, contribution margin, break-even orders, expected campaign economics, and strict null propagation.
-- **Deliverables:** Pure calculation module, isolated unit test suite `backend/tests/test_phase6_economics.py` covering formulas, exact boundaries, and null trees.
+- **Objectives:** Create `backend/app/analytics/economics.py`. Implement integer ratio rounding $(2N + D) // (2D)$, exact rational math (`RATE_SCALE = 10_000`), unit commission, contribution margin, break-even orders via integer ceiling division, expected campaign economics, and strict null propagation.
+- **Deliverables:** Pure calculation module, isolated unit test suite in `backend/tests/test_phase6_economics.py` covering formulas, exact boundaries, and null trees.
 - **Dependencies:** Workstream 0.
 
 ### Workstream 2: Data Model, Concurrency & Default Scenario Invariants
-- **Objectives:** Create `backend/app/models/economics_scenario.py`. Register model on `Base.metadata`. Implement composite unique index on `(product_id, name)` and partial unique default index. Implement `EconomicsService` with atomic default management, deterministic promotion on delete, and transactional concurrency guards.
+- **Objectives:** Create `backend/app/models/economics_scenario.py`. Register model on `Base.metadata`. Implement composite unique index on `(product_id, name)` and partial unique default index. Implement `EconomicsService` with atomic default management (`BEGIN IMMEDIATE`), deterministic promotion on delete, bounded retries, and transactional concurrency guards.
 - **Deliverables:** SQLAlchemy model, service class, unit/concurrency tests verifying all 8 race condition scenarios.
 - **Dependencies:** Workstream 1.
 
@@ -939,8 +1004,8 @@ Implementation must proceed in strict dependency order across 10 workstreams:
 - **Deliverables:** Updated backup service and init_db, isolated upgrade test verifying v2 $\to$ v3 transition.
 - **Dependencies:** Workstream 2.
 
-### Workstream 4: Product Economics APIs & Rebase Proxy
-- **Objectives:** Create `backend/app/api/economics.py`. Wire CRUD, set-default, duplicate, and rebase-price routes. Enforce quarantine exclusion, boundary validations, and conflict error codes. Update `main.py` router registration. Include safe table count in `/api/diagnostics`.
+### Workstream 4: Backend REST APIs & Rebase Proxy
+- **Objectives:** Create `backend/app/api/economics.py`. Wire CRUD, set-default, duplicate, and rebase-price routes. Enforce quarantine exclusion, safe-integer boundary validations, provenance mutation guards, and conflict error codes. Update `main.py` router registration. Include safe table count in `/api/diagnostics`.
 - **Deliverables:** FastAPI router, Pydantic schemas, comprehensive API test suite.
 - **Dependencies:** Workstream 3.
 
@@ -960,22 +1025,22 @@ Implementation must proceed in strict dependency order across 10 workstreams:
 - **Dependencies:** Workstream 6.
 
 ### Workstream 8: Backup, Recovery & Upgrade Qualification
-- **Objectives:** Implement automated tests for rejection of v2 backups on v3 app, round-trip v3 backup creation and restore, safety backup creation, and crash recovery. Verify zero session leakage.
+- **Objectives:** Implement automated tests for rejection of v2 backups on v3 app, round-trip v3 backup creation and restore, safety backup creation, and crash recovery. Verify zero session leakage. All tests run on isolated temporary databases.
 - **Deliverables:** Full disaster recovery test suite in `backend/tests/test_phase6_backup_upgrade.py`.
 - **Dependencies:** Workstream 7.
 
-### Workstream 9: Full Regression, Benchmark & Documentation
-- **Objectives:** Execute representative 200-product/5,000-snapshot benchmarks (<200ms hard gate). Run full regression suites (pytest 178+, Vitest 46+, typecheck, lint, production build). Update `ARCHITECTURE.md` and `README.md`. Prepare completion report.
+### Workstream 9: Full Regression, Benchmark, Manual QA & Documentation
+- **Objectives:** Execute representative 200-product/5,000-snapshot benchmarks (max latency <200ms hard gate). Run full regression suites (pytest 178+, Vitest 46+, typecheck, lint, production build). Execute manual QA matrix. Update `ARCHITECTURE.md` and `README.md`. Prepare completion report.
 - **Deliverables:** Performance evidence, documentation updates, final completion report.
 - **Dependencies:** Workstream 8.
 
 ---
 
-## 18. Expected Modules & Files Affected
+## 19. Expected Modules & Files Affected
 
 ### New Files to Create During Implementation
 1. `backend/app/models/economics_scenario.py` — SQLAlchemy model for `economics_scenarios`.
-2. `backend/app/analytics/economics.py` — Pure calculation module and rounding policy.
+2. `backend/app/analytics/economics.py` — Pure calculation module and integer ratio rounding policy.
 3. `backend/app/services/economics_service.py` — Scenario CRUD, atomic defaults, concurrency, proxy logic.
 4. `backend/app/api/economics.py` — FastAPI routes and Pydantic schemas.
 5. `backend/tests/test_phase6_economics.py` — Pure math, rounding, CRUD, concurrency, and default invariant tests.
@@ -1002,7 +1067,7 @@ Implementation must proceed in strict dependency order across 10 workstreams:
 
 ---
 
-## 19. Phase 1–5 Regression Protection Matrix
+## 20. Phase 1–5 Regression Protection Matrix
 
 | Subsystem | Existing Invariant Protected | Protection Mechanism in Phase 6 |
 | :--- | :--- | :--- |
@@ -1016,41 +1081,41 @@ Implementation must proceed in strict dependency order across 10 workstreams:
 
 ---
 
-## 20. Authoritative Validation Commands
+## 21. Authoritative Validation Commands (Finding M)
 
-The future implementation agent must execute and pass the following repository-standard commands before requesting qualification:
+The implementation agent must execute and pass the following repository-standard commands using the dedicated virtual environment interpreter:
 
 ### 1. Backend Validation
 ```powershell
 # Focused Phase 6 unit, concurrency, and API tests
-pytest backend/tests/test_phase6_economics.py -v
+.\backend\.venv\Scripts\python.exe -m pytest backend/tests/test_phase6_economics.py -v
 
 # Isolated upgrade, bootstrap, and backup tests
-pytest backend/tests/test_phase6_backup_upgrade.py -v
+.\backend\.venv\Scripts\python.exe -m pytest backend/tests/test_phase6_backup_upgrade.py -v
 
 # Performance query count and benchmark tests
-pytest backend/tests/test_performance_and_queries.py -v -k "economics"
+.\backend\.venv\Scripts\python.exe -m pytest backend/tests/test_performance_and_queries.py -v -k "economics"
 
 # Full backend test suite (all phases)
-pytest backend/tests/ -v
+.\backend\.venv\Scripts\python.exe -m pytest backend/tests/ -v
 ```
 
 ### 2. Frontend Validation
 ```powershell
 # Focused Phase 6 Vitest tests
-cd frontend; npx vitest run tests/phase6-economics.test.tsx
+cd frontend; npx vitest run tests/phase6-economics.test.tsx; cd ..
 
 # Full frontend Vitest suite
-npm test
+cd frontend; npm test; cd ..
 
 # TypeScript typecheck
-npx tsc --noEmit
+cd frontend; npx tsc --noEmit; cd ..
 
 # ESLint lint check
-npm run lint
+cd frontend; npm run lint; cd ..
 
 # Production build compilation
-npm run build
+cd frontend; npm run build; cd ..
 ```
 
 ### 3. Runtime Health & SQLite Integrity
@@ -1059,7 +1124,7 @@ npm run build
 .\healthcheck.bat
 
 # SQLite integrity and foreign-key check
-python -c "import sqlite3; con = sqlite3.connect('backend/affiliate.db'); print('Integrity:', con.execute('PRAGMA integrity_check').fetchall()); print('FK Check:', con.execute('PRAGMA foreign_key_check').fetchall()); con.close()"
+.\backend\.venv\Scripts\python.exe -c "import sqlite3; con = sqlite3.connect('backend/affiliate.db'); print('Integrity:', con.execute('PRAGMA integrity_check').fetchall()); print('FK Check:', con.execute('PRAGMA foreign_key_check').fetchall()); con.close()"
 ```
 
 ### 4. Disaster Recovery Qualification
@@ -1073,17 +1138,17 @@ python -c "import sqlite3; con = sqlite3.connect('backend/affiliate.db'); print(
 
 ---
 
-## 21. Documentation Requirements
+## 22. Documentation Requirements (Finding I)
 
 Following implementation, the following documentation deliverables are required:
-1. **`ARCHITECTURE.md`:** Update implementation status of Phase 6 from architecture-accepted to implemented. Record authoritative formulas, rounding policy, and query budgets.
-2. **`README.md`:** Update operator disaster recovery section detailing backup compatibility version `"3"`, rejection of version `"2"` backups, and requirement to generate fresh v3 backups.
-3. **`PHASE_6_COMPLETION_REPORT.md`:** Produce the comprehensive completion report detailing all 38 acceptance criteria, benchmark latency results, query counts, and test passes.
+1. **`ARCHITECTURE.md`:** Update implementation status of Phase 6 from architecture-accepted to implemented. Record authoritative integer formulas, rounding policy, and query budgets.
+2. **`README.md`:** Update operator disaster recovery section detailing backup compatibility version `"3"`, rejection of version `"2"` backups, requirement to generate fresh v3 backups, and session exclusion.
+3. **`PHASE_6_COMPLETION_REPORT.md`:** Produce the comprehensive completion report detailing all 42 acceptance criteria, benchmark latency results, query counts, manual QA results, and test passes.
 4. **`PLAN.md` & `PROJECT_STATUS.md`:** Reconcile project status and acceptance gates upon Project Control review.
 
 ---
 
-## 22. Preserved Deferred Work
+## 23. Preserved Deferred Work
 
 The following non-blocking debt and deferred roadmap items remain active and preserved:
 1. High `source-map-js` advisory (`GHSA-68fv-2mgg-jv7q`) in production dependency graph: non-blocking build-time debt.
@@ -1096,7 +1161,7 @@ The following non-blocking debt and deferred roadmap items remain active and pre
 
 ---
 
-## 23. Plan Gate & Verification Metadata
+## 24. Plan Gate & Verification Metadata
 
 ```yaml
 Plan Metadata:
@@ -1112,7 +1177,7 @@ Plan Metadata:
   Authoritative Actual Selection HEAD Commit: "d97f00f7819e778954a76abe3605e1442ea4155d"
   Current Implemented Compatibility Version: "2"
   Target Compatibility Version: "3"
-  Acceptance Criteria Count: 38 (P6-AC-01 through P6-AC-38)
+  Acceptance Criteria Count: 42 (P6-AC-01 through P6-AC-42)
   Workstreams Count: 10 (WS-0 through WS-9)
 ```
 

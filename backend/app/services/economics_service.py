@@ -17,6 +17,7 @@ from app.analytics.economics import (
 from app.schemas.economics import (
     EconomicsScenarioCreate,
     EconomicsScenarioUpdate,
+    validate_safe_integer_monetary_outputs,
 )
 
 T = TypeVar("T")
@@ -206,6 +207,21 @@ class EconomicsService:
             commission_base_vnd = normalize_snapshot_price_to_vnd(latest_snapshot.price)
             commission_base_source = "observed_price_proxy"
             commission_base_observed_at = latest_snapshot.captured_at
+            try:
+                validate_safe_integer_monetary_outputs(
+                    base_vnd=commission_base_vnd,
+                    rate_bps=data.commission_rate_bps,
+                    sample_cost_vnd=data.sample_cost_vnd,
+                    content_cost_vnd=data.content_cost_vnd,
+                    promotion_cost_vnd=data.promotion_cost_vnd,
+                    variable_cost_per_attributed_order_vnd=data.variable_cost_per_attributed_order_vnd,
+                    expected_attributed_orders=data.expected_attributed_orders,
+                )
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(e),
+                )
         else:
             commission_base_vnd = data.commission_base_vnd
             commission_base_source = "user_entered"
@@ -320,14 +336,21 @@ class EconomicsService:
                     setattr(scenario, field, update_fields[field])
 
             # Enforce JS safe-integer contract on resulting combined scenario state
-            var_cost = scenario.variable_cost_per_attributed_order_vnd
-            orders = scenario.expected_attributed_orders
-            if var_cost is not None and orders is not None:
-                if var_cost * orders > 9_007_199_254_740_991:
-                    raise HTTPException(
-                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        detail="Tổng chi phí biến đổi dự kiến vượt quá giới hạn an toàn JavaScript (Number.MAX_SAFE_INTEGER = 9007199254740991).",
-                    )
+            try:
+                validate_safe_integer_monetary_outputs(
+                    base_vnd=scenario.commission_base_vnd,
+                    rate_bps=scenario.commission_rate_bps,
+                    sample_cost_vnd=scenario.sample_cost_vnd,
+                    content_cost_vnd=scenario.content_cost_vnd,
+                    promotion_cost_vnd=scenario.promotion_cost_vnd,
+                    variable_cost_per_attributed_order_vnd=scenario.variable_cost_per_attributed_order_vnd,
+                    expected_attributed_orders=scenario.expected_attributed_orders,
+                )
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(e),
+                )
 
             scenario.updated_at = datetime.now(timezone.utc)
             self.db.flush()
@@ -476,6 +499,22 @@ class EconomicsService:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Không tìm thấy kịch bản {scenario_id} cho sản phẩm {product_id}.",
+                )
+
+            try:
+                validate_safe_integer_monetary_outputs(
+                    base_vnd=new_base_vnd,
+                    rate_bps=scenario.commission_rate_bps,
+                    sample_cost_vnd=scenario.sample_cost_vnd,
+                    content_cost_vnd=scenario.content_cost_vnd,
+                    promotion_cost_vnd=scenario.promotion_cost_vnd,
+                    variable_cost_per_attributed_order_vnd=scenario.variable_cost_per_attributed_order_vnd,
+                    expected_attributed_orders=scenario.expected_attributed_orders,
+                )
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(e),
                 )
 
             scenario.commission_base_vnd = new_base_vnd

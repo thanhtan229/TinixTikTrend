@@ -22,10 +22,16 @@ All 10 required remediation gates have been executed and verified against the ac
      $$\text{break\_even\_orders} = \left\lceil \frac{\text{fixed\_campaign\_cost\_vnd} \times 10\,000}{\text{contrib\_num}} \right\rceil = \frac{\text{fixed\_cost} \times 10\,000 + \text{contrib\_num} - 1}{\text{contrib\_num}}$$
    - Regression vector strictly verified: `base = 105 VND`, `rate = 1000 bps`, `variable = 10 VND`, `fixed = 1 VND` $\implies$ Break-even = **`2`**, never `1` (eliminating the presentation-rounding off-by-one hazard).
 2. **JavaScript Safe-Integer Contract ($Number.MAX\_SAFE\_INTEGER = 9,007,199,254,740,991$):**
-   - Field-level maximum boundary ($10^{11}$ VND, $10,000$ bps, $10^6$ orders) accepted at boundary, rejected at bound + 1 with HTTP 422.
-   - Derived totals multiplied by `expected_attributed_orders` guarded in Pydantic schema validation:
-     - Accepted at/below safe integer limit ($90,071,992,547 \times 100,000 = 9,007,199,254,700,000 \le 9,007,199,254,740,991$).
-     - Rejected with HTTP 422 one above bound ($90,071,992,548 \times 100,000 = 9,007,199,254,800,000 > 9,007,199,254,740,991$).
+   - Rejection contract: Create, update (PATCH), and rebase payloads are rejected with HTTP 422 when supplied assumptions cause any mathematically known derived integer monetary output to exceed `Number.MAX_SAFE_INTEGER`:
+     - Rounded commission per attributable order;
+     - Fixed campaign cost sum;
+     - Expected commission;
+     - Expected variable cost;
+     - Total expected campaign cost;
+     - Expected contribution magnitude (both positive and negative).
+   - Exact integer/rational arithmetic used throughout; zero floating-point representation artifacts.
+   - Missing input semantics preserved: missing assumptions cleanly evaluate to `None` in derived responses without triggering validation rejection, proving missing-value semantics remain strictly distinct from numeric overflow rejection.
+   - All 7 focused safe-integer verification vectors pass: max valid combination, one-above expected commission (422), one-above expected variable cost (422), one-above total campaign cost (422), one-above positive/negative contribution magnitude (422), clean missing input `None` evaluation, and PATCH equivalent validation on merged candidate state.
    - Pure analytics engine defensively clamps/returns `None` for any derived value exceeding safe-integer limits.
 3. **Schema Table Naming Verification:**
    - Verified that `economics_scenarios` is the authoritative, accepted (ADR-005 line 122), and implemented database table name.
@@ -56,8 +62,8 @@ All 10 required remediation gates have been executed and verified against the ac
 
 ### 2.1 Backend Automated Tests (Pytest)
 Executed via repository virtual environment interpreter: `.\backend\.venv\Scripts\python.exe -m pytest backend/tests/ -q`
-- **Total Backend Tests:** **222 passed** (0 failed, 4 non-blocking deprecation warnings) in **55.00s**.
-- **Dedicated Phase 6 Economics Tests:** `backend/tests/test_phase6_economics.py` (37 passed).
+- **Total Backend Tests:** **223 passed** (0 failed, 4 non-blocking deprecation warnings) in **55.00s**.
+- **Dedicated Phase 6 Economics Tests:** `backend/tests/test_phase6_economics.py` (38 passed).
 - **Disaster Recovery & Version "3" Upgrade Tests:** `backend/tests/test_phase6_backup_upgrade.py` (4 passed).
 - **Performance & Query Count Tests:** `backend/tests/test_performance_and_queries.py` (6 passed).
 
@@ -175,7 +181,7 @@ Phase 6 introduces zero new security vulnerabilities and preserves all previousl
 
 Phase 6 technical remediation is **COMPLETE, VERIFIED, AND FULLY RECONCILED**.
 - All 10 remediation points have concrete evidence in the repository.
-- Backend passes 222 tests; frontend passes 52 tests; TypeScript, ESLint, Next.js build, and runtime healthchecks are 100% green.
+- Backend passes 223 tests; frontend passes 52 tests; TypeScript, ESLint, Next.js build, and runtime healthchecks are 100% green.
 - Phase 7 remains strictly provisional without implementation code or tests.
 
-**Status:** **`READY FOR PHASE 6 RE-REVIEW`**
+**Status:** **`READY FOR FINAL PHASE 6 COMPLETION REVIEW`**

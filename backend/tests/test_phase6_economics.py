@@ -1322,6 +1322,200 @@ def test_safe_integer_max_boundary_and_rejections(test_client: TestClient, p6_db
     assert r_patch_over.status_code == 422
 
 
+def test_blocker_1_safe_integer_semantic_correctness_and_boundaries(test_client: TestClient, p6_db):
+    """
+    Focused verification of all 7 safe-integer semantic correctness rules:
+    1. Maximum valid combination remains <= JS safe integer and returns exact integer outputs.
+    2. One-above-safe expected commission -> HTTP 422.
+    3. One-above-safe expected variable cost -> HTTP 422.
+    4. One-above-safe total campaign cost -> HTTP 422.
+    5. One-above-safe positive/negative expected contribution magnitude -> HTTP 422.
+    6. Genuine missing input still returns None, proving missing-value semantics remain distinct from overflow rejection.
+    7. PATCH receives the same validation guarantees as POST.
+    """
+    _, _, prod, _ = p6_db
+    p_id = prod.id
+
+    # 1. Maximum valid combination remains <= JS safe integer and returns exact integer outputs
+    # 17_179_869_183 * 524_288 = 9_007_199_254_216_704 <= 9_007_199_254_740_991 (Number.MAX_SAFE_INTEGER)
+    r_valid_max = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "Safe Max Valid Scenario",
+            "commission_base_vnd": 17_179_869_183,
+            "commission_rate_bps": 10_000,
+            "expected_attributed_orders": 524_288,
+            "sample_cost_vnd": 1_000,
+            "content_cost_vnd": 2_000,
+            "promotion_cost_vnd": 3_000,
+            "variable_cost_per_attributed_order_vnd": 10_000,
+        },
+    )
+    assert r_valid_max.status_code == 201
+    d = r_valid_max.json()["derived"]
+    assert d["commission_per_order_vnd"] == 17_179_869_183
+    assert d["fixed_campaign_cost_vnd"] == 6_000
+    assert d["contribution_per_order_vnd"] == 17_179_859_183
+    assert d["break_even_orders"] == 1
+    assert d["expected_commission_vnd"] == 9_007_199_254_216_704
+    assert d["expected_variable_cost_vnd"] == 5_242_880_000
+    assert d["expected_contribution_vnd"] == 9_007_194_011_330_704
+    assert isinstance(d["return_on_cost_ratio"], float)
+    for field in [
+        "commission_per_order_vnd",
+        "fixed_campaign_cost_vnd",
+        "contribution_per_order_vnd",
+        "break_even_orders",
+        "expected_commission_vnd",
+        "expected_variable_cost_vnd",
+        "expected_contribution_vnd",
+    ]:
+        val = d[field]
+        assert isinstance(val, int), f"{field} must be an integer, got {type(val)}"
+        assert val <= 9_007_199_254_740_991, f"{field} exceeds JS safe integer"
+
+    # 2. One-above-safe expected commission -> HTTP 422
+    # 17_179_869_184 * 524_288 = 9_007_199_254_740_992 = Number.MAX_SAFE_INTEGER + 1
+    r_exp_comm_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "One Above Expected Comm",
+            "commission_base_vnd": 17_179_869_184,
+            "commission_rate_bps": 10_000,
+            "expected_attributed_orders": 524_288,
+        },
+    )
+    assert r_exp_comm_over.status_code == 422
+    assert "giới hạn an toàn" in r_exp_comm_over.text
+
+    # 3. One-above-safe expected variable cost -> HTTP 422
+    # 17_179_869_184 * 524_288 = 9_007_199_254_740_992 = Number.MAX_SAFE_INTEGER + 1
+    r_exp_var_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "One Above Expected Var",
+            "variable_cost_per_attributed_order_vnd": 17_179_869_184,
+            "expected_attributed_orders": 524_288,
+        },
+    )
+    assert r_exp_var_over.status_code == 422
+    assert "giới hạn an toàn" in r_exp_var_over.text
+
+    # 4. One-above-safe total campaign cost -> HTTP 422
+    # variable_cost * orders = 17_179_869_183 * 524_288 = 9_007_199_254_216_704 <= SAFE
+    # sample_cost = 524_288 <= SAFE
+    # total_cost = 9_007_199_254_740_992 = Number.MAX_SAFE_INTEGER + 1
+    r_total_cost_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "One Above Total Campaign Cost",
+            "sample_cost_vnd": 524_288,
+            "variable_cost_per_attributed_order_vnd": 17_179_869_183,
+            "expected_attributed_orders": 524_288,
+        },
+    )
+    assert r_total_cost_over.status_code == 422
+    assert "giới hạn an toàn" in r_total_cost_over.text
+
+    # 5. One-above-safe positive/negative expected contribution magnitude -> HTTP 422
+    # Positive magnitude: gross commission = 9_007_199_254_740_992, total cost = 0 -> +9_007_199_254_740_992
+    r_pos_contrib_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "One Above Positive Contrib",
+            "commission_base_vnd": 17_179_869_184,
+            "commission_rate_bps": 10_000,
+            "expected_attributed_orders": 524_288,
+            "sample_cost_vnd": 0,
+            "content_cost_vnd": 0,
+            "promotion_cost_vnd": 0,
+            "variable_cost_per_attributed_order_vnd": 0,
+        },
+    )
+    assert r_pos_contrib_over.status_code == 422
+    assert "giới hạn an toàn" in r_pos_contrib_over.text
+
+    # Negative magnitude: gross commission = 0, total cost = 9_007_199_254_740_992 -> -9_007_199_254_740_992
+    r_neg_contrib_over = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "One Above Negative Contrib",
+            "commission_base_vnd": 0,
+            "commission_rate_bps": 0,
+            "expected_attributed_orders": 524_288,
+            "sample_cost_vnd": 524_288,
+            "content_cost_vnd": 0,
+            "promotion_cost_vnd": 0,
+            "variable_cost_per_attributed_order_vnd": 17_179_869_183,
+        },
+    )
+    assert r_neg_contrib_over.status_code == 422
+    assert "giới hạn an toàn" in r_neg_contrib_over.text
+
+    # 6. Genuine missing input still returns None, proving missing-value semantics remain distinct from overflow rejection
+    r_missing = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "Genuine Missing Inputs Scenario",
+            "commission_base_vnd": 250_000,
+        },
+    )
+    assert r_missing.status_code == 201
+    d_missing = r_missing.json()["derived"]
+    assert d_missing["commission_per_order_vnd"] is None
+    assert d_missing["fixed_campaign_cost_vnd"] is None
+    assert d_missing["contribution_per_order_vnd"] is None
+    assert d_missing["break_even_orders"] is None
+    assert d_missing["expected_commission_vnd"] is None
+    assert d_missing["expected_variable_cost_vnd"] is None
+    assert d_missing["expected_contribution_vnd"] is None
+    assert d_missing["return_on_cost_ratio"] is None
+
+    # 7. PATCH receives the same validation guarantees as POST
+    # Create valid baseline
+    r_patch_base = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "Patch Validation Base",
+            "commission_base_vnd": 100_000,
+            "commission_rate_bps": 10_000,
+            "variable_cost_per_attributed_order_vnd": 17_179_869_184,
+            "expected_attributed_orders": 10,
+        },
+    )
+    assert r_patch_base.status_code == 201
+    patch_sc_id = r_patch_base.json()["id"]
+
+    # PATCH expected_attributed_orders causing merged expected variable cost overflow
+    r_patch_var_fail = test_client.patch(
+        f"/api/products/{p_id}/economics/{patch_sc_id}",
+        json={"expected_attributed_orders": 524_288},
+    )
+    assert r_patch_var_fail.status_code == 422
+    assert "giới hạn an toàn" in r_patch_var_fail.text
+
+    # PATCH commission_base_vnd causing merged expected commission overflow
+    r_patch_base2 = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "Patch Comm Base",
+            "commission_rate_bps": 10_000,
+            "expected_attributed_orders": 524_288,
+        },
+    )
+    assert r_patch_base2.status_code == 201
+    patch_sc_id2 = r_patch_base2.json()["id"]
+
+    r_patch_comm_fail = test_client.patch(
+        f"/api/products/{p_id}/economics/{patch_sc_id2}",
+        json={"commission_base_vnd": 17_179_869_184},
+    )
+    assert r_patch_comm_fail.status_code == 422
+    assert "giới hạn an toàn" in r_patch_comm_fail.text
+
+
+
+
 def test_pure_engine_safe_integer_clamping():
     """
     Pure analytics engine defensively clamps / returns None for numbers exceeding JS_MAX_SAFE_INTEGER.

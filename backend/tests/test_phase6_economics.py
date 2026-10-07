@@ -1040,3 +1040,162 @@ def test_p6_ac_31_explicit_price_rebase(p6_db):
     assert rebased["commission_base_source"] == "observed_price_proxy"
     assert rebased["commission_base_observed_at"] is not None
 
+
+# ==============================================================================
+# REST API Integration Tests (Workstream 4)
+# ==============================================================================
+
+from fastapi.testclient import TestClient
+from app.main import app
+from app.db.session import get_db
+
+
+@pytest.fixture
+def test_client(p6_db):
+    session, _, _, _ = p6_db
+
+    def override_get_db():
+        try:
+            yield session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+
+
+def test_api_economics_crud_lifecycle(test_client: TestClient, p6_db):
+    """
+    Test full REST API lifecycle on /api/products/{id}/economics:
+    POST create, GET list, GET single, PATCH update, POST duplicate,
+    POST set-default, POST rebase-price, DELETE.
+    """
+    _, _, prod, _ = p6_db
+    p_id = prod.id
+
+    # 1. POST create first scenario (auto default)
+    r_create = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={
+            "name": "API Scenario 1",
+            "commission_rate_bps": 1500,
+            "commission_base_vnd": 200_000,
+            "sample_cost_vnd": 50_000,
+            "content_cost_vnd": 100_000,
+            "promotion_cost_vnd": 150_000,
+            "variable_cost_per_attributed_order_vnd": 5_000,
+            "expected_attributed_orders": 100,
+        },
+    )
+    assert r_create.status_code == 201
+    d1 = r_create.json()
+    assert d1["name"] == "API Scenario 1"
+    assert d1["is_default"] is True
+    assert d1["derived"]["commission_per_order_vnd"] == 30_000
+    assert d1["derived"]["break_even_orders"] == 12
+    s1_id = d1["id"]
+
+    # 2. GET list scenarios
+    r_list = test_client.get(f"/api/products/{p_id}/economics")
+    assert r_list.status_code == 200
+    items = r_list.json()
+    assert len(items) == 1
+    assert items[0]["id"] == s1_id
+
+    # 3. GET single scenario
+    r_get = test_client.get(f"/api/products/{p_id}/economics/{s1_id}")
+    assert r_get.status_code == 200
+    assert r_get.json()["id"] == s1_id
+
+    # 4. PATCH update assumptions
+    r_patch = test_client.patch(
+        f"/api/products/{p_id}/economics/{s1_id}",
+        json={
+            "commission_base_vnd": 250_000,
+            "expected_attributed_orders": 200,
+        },
+    )
+    assert r_patch.status_code == 200
+    d_patch = r_patch.json()
+    assert d_patch["commission_base_vnd"] == 250_000
+    assert d_patch["commission_base_source"] == "user_entered"
+    # Derived reflects 250k base * 15% = 37,500
+    assert d_patch["derived"]["commission_per_order_vnd"] == 37_500
+
+    # 5. POST duplicate
+    r_dup = test_client.post(
+        f"/api/products/{p_id}/economics/{s1_id}/duplicate",
+        json={"name": "API Scenario 2 Cloned"},
+    )
+    assert r_dup.status_code == 201
+    d_dup = r_dup.json()
+    assert d_dup["name"] == "API Scenario 2 Cloned"
+    assert d_dup["is_default"] is False
+    s2_id = d_dup["id"]
+
+    # 6. POST set-default
+    r_def = test_client.post(f"/api/products/{p_id}/economics/{s2_id}/set-default")
+    assert r_def.status_code == 200
+    assert r_def.json()["is_default"] is True
+
+    # 7. POST rebase-price
+    r_rebase = test_client.post(f"/api/products/{p_id}/economics/{s1_id}/rebase-price")
+    assert r_rebase.status_code == 200
+    assert r_rebase.json()["commission_base_source"] == "observed_price_proxy"
+
+    # 8. DELETE scenario
+    r_del = test_client.delete(f"/api/products/{p_id}/economics/{s2_id}")
+    assert r_del.status_code == 204
+
+    # Verify s1 is promoted back to default
+    r_after = test_client.get(f"/api/products/{p_id}/economics/{s1_id}")
+    assert r_after.status_code == 200
+    assert r_after.json()["is_default"] is True
+
+
+def test_api_economics_error_mappings(test_client: TestClient, p6_db):
+    """
+    Test standard HTTP error status code mappings:
+    400, 404, 409, 422.
+    """
+    _, _, prod, prod_q = p6_db
+    p_id = prod.id
+    q_id = prod_q.id
+
+    # 404: Non-existent product
+    r_404 = test_client.get("/api/products/999999/economics")
+    assert r_404.status_code == 404
+
+    # 400: Quarantined product
+    r_400 = test_client.get(f"/api/products/{q_id}/economics")
+    assert r_400.status_code == 400
+    assert "quarantine" in r_400.json()["detail"]
+
+    # 409: Duplicate name
+    test_client.post(f"/api/products/{p_id}/economics", json={"name": "Duplicate Me"})
+    r_409 = test_client.post(f"/api/products/{p_id}/economics", json={"name": "Duplicate Me"})
+    assert r_409.status_code == 409
+
+    # 422: Mutual exclusion (use_observed_price=True with manual base)
+    r_422 = test_client.post(
+        f"/api/products/{p_id}/economics",
+        json={"name": "Invalid Base", "use_observed_price": True, "commission_base_vnd": 100_000},
+    )
+    assert r_422.status_code == 422
+
+
+def test_api_diagnostics_includes_economics(test_client: TestClient):
+    """
+    Diagnostics endpoint includes safe table count for economics_scenarios.
+    """
+    res = test_client.get("/api/diagnostics")
+    assert res.status_code == 200
+    data = res.json()
+    assert "database" in data
+    assert "table_counts" in data["database"]
+    assert "economics_scenarios" in data["database"]["table_counts"]
+    assert isinstance(data["database"]["table_counts"]["economics_scenarios"], int)
+
+

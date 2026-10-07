@@ -19,6 +19,7 @@ from app.models.quarantine import QuarantinedProduct
 from app.models.watchlist import WatchlistItem
 from app.models.alert_rule import AlertRule
 from app.models.alert_event import AlertEvent
+from app.models.economics_scenario import EconomicsScenario
 
 router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 
@@ -41,6 +42,7 @@ def get_system_diagnostics(db: Session = Depends(get_db)):
         "watchlist_items": db.scalar(select(func.count(WatchlistItem.id))) or 0,
         "alert_rules": db.scalar(select(func.count(AlertRule.id))) or 0,
         "alert_events": db.scalar(select(func.count(AlertEvent.id))) or 0,
+        "economics_scenarios": db.scalar(select(func.count(EconomicsScenario.id))) or 0,
     }
 
     # Crawler state

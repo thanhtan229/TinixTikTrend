@@ -54,6 +54,9 @@ class ProductIdentity(BaseModel):
     last_seen_at: datetime
 
 
+from app.schemas.economics import EconomicsScenarioResponse
+
+
 class CollectionMemberResponse(BaseModel):
     id: int
     collection_id: int
@@ -64,6 +67,7 @@ class CollectionMemberResponse(BaseModel):
     updated_at: datetime
     is_watched: bool
     product: Optional[ProductIdentity] = None
+    default_economics: Optional[EconomicsScenarioResponse] = None
 
 
 class CollectionItemResponse(BaseModel):

@@ -13,6 +13,8 @@ from app.models.alert_event import AlertEvent
 from app.services.product_service import get_analyzed_product
 from app.analytics.deltas import ensure_utc
 from app.analytics.evidence import TrendReason
+from app.schemas.economics import EconomicsScenarioResponse
+from app.services.economics_service import EconomicsService
 
 
 class CompareRequest(BaseModel):
@@ -60,6 +62,9 @@ class ComparedProductResponse(BaseModel):
     # Bounded 7d alert summary
     recent_alert_count_7d: int = 0
     latest_alert_at: Optional[datetime] = None
+
+    # Phase 6: Default economics scenario
+    default_economics: Optional[EconomicsScenarioResponse] = None
 
 
 class CompareResponse(BaseModel):
@@ -160,7 +165,12 @@ class CompareService:
         collection_items_map = {}
         if collection_id is not None:
             col_and_items = (
-                self.db.query(Collection.id, CollectionItem)
+                self.db.query(
+                    Collection.id,
+                    CollectionItem.product_id,
+                    CollectionItem.review_status,
+                    CollectionItem.notes,
+                )
                 .outerjoin(
                     CollectionItem,
                     (CollectionItem.collection_id == Collection.id)
@@ -174,9 +184,13 @@ class CompareService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Collection {collection_id} not found"
                 )
-            for cid, item in col_and_items:
-                if item is not None:
-                    collection_items_map[item.product_id] = item
+            for cid, it_pid, it_status, it_notes in col_and_items:
+                if it_pid is not None:
+                    collection_items_map[it_pid] = (it_status, it_notes)
+
+        # QUERY: Batch load default economics for compared products (P6-AC-34: <= 4 queries with collection, <= 3 without; zero N+1)
+        econ_service = EconomicsService(self.db)
+        default_economics_map = econ_service.get_default_scenarios_for_products(product_ids)
 
         # Build response preserving caller product order
         results = []
@@ -188,11 +202,11 @@ class CompareService:
             # Collection context
             c_ctx = None
             if collection_id is not None and pid in collection_items_map:
-                it = collection_items_map[pid]
+                it_status, it_notes = collection_items_map[pid]
                 c_ctx = CollectionContext(
                     collection_id=collection_id,
-                    review_status=it.review_status,
-                    notes=it.notes,
+                    review_status=it_status,
+                    notes=it_notes,
                 )
 
             # Alert summary
@@ -242,6 +256,7 @@ class CompareService:
                     review_count=review_count,
                     recent_alert_count_7d=alert_count,
                     latest_alert_at=latest_alert_at,
+                    default_economics=default_economics_map.get(pid),
                 )
             )
 

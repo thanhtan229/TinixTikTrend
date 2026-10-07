@@ -1060,10 +1060,14 @@ def test_client(p6_db):
         finally:
             pass
 
+    original_override = app.dependency_overrides.get(get_db)
     app.dependency_overrides[get_db] = override_get_db
     client = TestClient(app)
     yield client
-    app.dependency_overrides.clear()
+    if original_override:
+        app.dependency_overrides[get_db] = original_override
+    else:
+        app.dependency_overrides.pop(get_db, None)
 
 
 def test_api_economics_crud_lifecycle(test_client: TestClient, p6_db):

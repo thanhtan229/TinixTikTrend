@@ -245,3 +245,127 @@ def test_deterministic_as_of_analytics_replay_excludes_future_observations():
     db.close()
     engine.dispose()
 
+
+def test_p6_ac_33_collection_members_query_budget():
+    """
+    P6-AC-33: Collection member list displays default scenario summary via batched query.
+    Query budget <= 3 SQL queries total; zero N+1.
+    """
+    from app.models.collection import Collection
+    from app.models.collection_item import CollectionItem
+    from app.models.economics_scenario import EconomicsScenario
+    from app.services.collection_service import CollectionService
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    col = Collection(name="Econ Test Col")
+    db.add(col)
+    db.flush()
+
+    now = datetime(2026, 10, 5, 12, 0, 0, tzinfo=timezone.utc)
+    for i in range(5):
+        p = Product(external_product_id=f"col_p_{i}", title=f"Col Prod {i}", first_seen_at=now, last_seen_at=now)
+        db.add(p)
+        db.flush()
+        db.add(CollectionItem(collection_id=col.id, product_id=p.id))
+        # Add default scenario for some products
+        if i % 2 == 0:
+            db.add(EconomicsScenario(
+                product_id=p.id,
+                name="Default Plan",
+                commission_rate_bps=1000,
+                commission_base_vnd=100_000,
+                is_default=True,
+            ))
+    db.commit()
+
+    query_count = 0
+    def query_listener(conn, cursor, statement, parameters, context, executemany):
+        nonlocal query_count
+        query_count += 1
+
+    event.listen(engine, "after_cursor_execute", query_listener)
+
+    service = CollectionService(db)
+    members = service.get_collection_members(col.id)
+
+    assert len(members) == 5
+    assert query_count <= 3, f"Expected <= 3 queries, got {query_count}"
+
+    # Verify default economics attached
+    has_econ = [m for m in members if m["default_economics"] is not None]
+    assert len(has_econ) == 3
+
+    event.remove(engine, "after_cursor_execute", query_listener)
+    db.close()
+    engine.dispose()
+
+
+def test_p6_ac_34_compare_products_query_budget():
+    """
+    P6-AC-34: Compare products query budget:
+    <= 3 queries without collection; <= 4 queries with collection. Zero N+1.
+    """
+    from app.models.collection import Collection
+    from app.models.collection_item import CollectionItem
+    from app.models.economics_scenario import EconomicsScenario
+    from app.services.compare_service import CompareService
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    col = Collection(name="Compare Col")
+    db.add(col)
+    db.flush()
+    col_id = col.id
+
+    now = datetime(2026, 10, 5, 12, 0, 0, tzinfo=timezone.utc)
+    p_ids = []
+    for i in range(4):
+        p = Product(external_product_id=f"cmp_p_{i}", title=f"Compare Prod {i}", first_seen_at=now, last_seen_at=now)
+        db.add(p)
+        db.flush()
+        p_ids.append(p.id)
+        db.add(CollectionItem(collection_id=col_id, product_id=p.id))
+        db.add(ProductSnapshot(product_id=p.id, captured_at=now, sold_count=100, price=50000.0))
+        db.add(EconomicsScenario(
+            product_id=p.id,
+            name="Plan 1",
+            commission_rate_bps=1200,
+            commission_base_vnd=50_000,
+            is_default=True,
+        ))
+    db.commit()
+
+    query_count = 0
+    def query_listener(conn, cursor, statement, parameters, context, executemany):
+        nonlocal query_count
+        query_count += 1
+
+    event.listen(engine, "after_cursor_execute", query_listener)
+
+    service = CompareService(db)
+
+    # 1. Compare without collection: <= 3 queries
+    query_count = 0
+    res_no_col = service.compare_products(product_ids=p_ids, collection_id=None)
+    assert len(res_no_col.products) == 4
+    assert query_count <= 3, f"Expected <= 3 queries without collection, got {query_count}"
+    assert all(p.default_economics is not None for p in res_no_col.products)
+
+    # 2. Compare with collection: <= 4 queries
+    query_count = 0
+    res_col = service.compare_products(product_ids=p_ids, collection_id=col_id)
+    assert len(res_col.products) == 4
+    assert query_count <= 4, f"Expected <= 4 queries with collection, got {query_count}"
+
+    event.remove(engine, "after_cursor_execute", query_listener)
+    db.close()
+    engine.dispose()
+
+

@@ -79,6 +79,12 @@ class CollectionService:
             .all()
         )
 
+        # Query 3: Batch load default economics for all products (P6-AC-33: <= 3 queries total, zero N+1)
+        product_ids = [item.product_id for item in items if item.product_id]
+        from app.services.economics_service import EconomicsService
+        econ_service = EconomicsService(self.db)
+        default_economics_map = econ_service.get_default_scenarios_for_products(product_ids)
+
         result = []
         for item in items:
             p = item.product
@@ -104,6 +110,7 @@ class CollectionService:
                     "first_seen_at": p.first_seen_at,
                     "last_seen_at": p.last_seen_at,
                 } if p else None,
+                "default_economics": default_economics_map.get(item.product_id),
             })
         return result
 

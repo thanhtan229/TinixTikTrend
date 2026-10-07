@@ -303,19 +303,16 @@ All release acceptance criteria are now validated under the revised acceptance c
     - Saved View V1 schemas, alert rules, and crawler unchanged for MVP.
     - No official Affiliate API/OAuth in MVP; no private dashboard scraping; no new third-party dependencies.
 
-- **Planning Constraints for Future Phase 6 Plan:**
-  - The future Phase 6 plan must strictly comply with ADR-005 and accepted research.
-  - The plan must explicitly cover concurrency and invariant testing for default scenario behavior, at minimum:
-    1. Concurrent first-scenario creation on a Product (ensuring deterministic single default);
-    2. Concurrent attempts to set different defaults on the same Product;
-    3. Delete-current-default racing with default switch;
-    4. Partial unique-index enforcement at the database level (`UNIQUE(product_id) WHERE is_default = 1`);
-    5. Service-level exactly-one-default invariant enforcement;
-    6. Transaction rollback behavior upon conflict/failure;
-    7. No committed state where a Product with scenarios has zero defaults;
-    8. No committed state where a Product with scenarios has multiple defaults.
-  - No acceptance criteria or test cases are defined or created in this task.
-  - Implementation plan must be reviewed and approved by Project Control before any coding begins.
+- **Phase 6 Authoritative Plan & Approval:**
+  - Authoritative Plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md)
+  - Plan Status: `APPROVED`
+  - Implementation Status: `AUTHORIZED`
+  - Approved Plan Revision Baseline: `4713fa422eb7f407b78995a9d453711910efc354`
+  - Project Control Approval Record: [`PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md`](PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md)
+  - Authoritative Acceptance Criteria: 42 criteria (`P6-AC-01` through `P6-AC-42`), covering domain separation, exact integer ratio rounding, deterministic concurrency, proxy provenance, query budgets, v2->v3 bootstrap, and ADR-004 restore/recovery safety.
+  - Workstreams: 10 dependency-ordered workstreams (WS-0 through WS-9).
+  - Implementation is authorized to proceed strictly against the approved plan.
+
 
 - **Preserved Architecture Boundaries:**
   - `Watchlist = monitoring`;
@@ -348,7 +345,7 @@ All release acceptance criteria are now validated under the revised acceptance c
 - **Phase 4 Status:** `COMPLETE / ACCEPTED` (all acceptance criteria P4-AC-01 through P4-AC-35 validated and accepted).
 - **Phase 5 Implementation Status:** `COMPLETE / ACCEPTED` (authoritative plan: [`PHASE_5_PLAN.md`](PHASE_5_PLAN.md), authoritative acceptance criteria: `P5-AC-01` through `P5-AC-36` all accepted/passing; implementation acceptance remains valid).
 - **Phase 5 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` (Project Control accepted the repository-aware QA report; prior QA-environment availability blocker closed; qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`; formal qualification record: [`PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md`](PROJECT_CONTROL_PHASE5_RELEASE_QUALIFIED.md); historical blocked record preserved in [`PROJECT_CONTROL_PHASE5_QA_BLOCKED.md`](PROJECT_CONTROL_PHASE5_QA_BLOCKED.md)).
-- **Next Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`SELECTED / RESEARCH COMPLETE / ARCHITECTURE ACCEPTED`; research `CLOSED / ACCEPTED`, ADR-005 `ACCEPTED`, product direction `RECOMMEND WITH REVISED SCOPE — ACCEPTED`, architecture gate `CLOSED / ACCEPTED`, plan `NOT YET APPROVED`, implementation `NOT AUTHORIZED`, authoritative actual Phase 6 selection HEAD commit: `d97f00f7819e778954a76abe3605e1442ea4155d`; previously reported identifier `d97f00f9a25b16f398f658be424b94f1e58286ad` superseded; planning is now authorized to begin against accepted research and ADR-005). Selecting, researching, and accepting architecture for Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md); research acceptance record: [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md); ADR-005 acceptance record: [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md); research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md); authoritative ADR: [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md).
+- **Active Phase:** Phase 6 — Affiliate Economics & Profitability Intelligence (`PLAN APPROVED / IMPLEMENTATION AUTHORIZED`; research `CLOSED / ACCEPTED`, ADR-005 `ACCEPTED`, product direction `RECOMMEND WITH REVISED SCOPE — ACCEPTED`, architecture gate `CLOSED / ACCEPTED`, plan `APPROVED` via [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md), approved plan baseline `4713fa422eb7f407b78995a9d453711910efc354`, 42 acceptance criteria `P6-AC-01` through `P6-AC-42`, approval record [`PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md`](PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md); implementation is authorized to proceed; current product compatibility remains `"2"`; target Phase 6 compatibility is `"3"` upon schema implementation). Selecting, researching, planning, and implementing Phase 6 does not invalidate the qualified Phase 5 release. Selection record: [`PROJECT_CONTROL_PHASE6_SELECTION.md`](PROJECT_CONTROL_PHASE6_SELECTION.md); research acceptance record: [`PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md`](PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md); ADR-005 acceptance record: [`PROJECT_CONTROL_ADR005_ACCEPTED.md`](PROJECT_CONTROL_ADR005_ACCEPTED.md); research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md); authoritative ADR: [`docs/architecture/ADR-005.md`](docs/architecture/ADR-005.md); authoritative plan: [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md).
 - **Architecture & ADRs:** ADR-003 and ADR-004 remain active (`portable_backup_compatibility_version` in currently implemented product remains `"2"`); ADR-005 now `ACCEPTED` (selects target compatibility `"3"` for future Phase 6 schema); `ARCHITECTURE.md` updated with Phase 6 architecture section.
 - **QA Code & Runtime Qualification:** PASS. Backend 178/178 pytest PASS (focused Phase 5 suite 25/25 PASS), Frontend 46/46 Vitest PASS, TypeScript clean, ESLint clean, Next.js build clean, healthcheck clean, SQLite integrity and FK checks clean. Collections query count: 2 SQL queries; Compare: 3 SQL queries with Collection context / 2 without; Saved View apply: 0 additional queries; Zero N+1; representative Compare benchmark (200 products / 5,000 snapshots / 5-product compare: best 4.42ms, median 5.14ms, p95 5.42ms, worst 5.42ms; <200ms hard gate PASS, <50ms research target PASS); Phase-4/v1 → Phase-5/v2 isolated bootstrap PASS; version-1 backup rejection PASS; version-2 backup/restore round-trip PASS; no functional regression detected; ADR-003 unchanged; ADR-004 same-version semantics unchanged.
 - **Source-Control Handoff:** QUALIFIED / RECONCILED. Qualified repository revision: `6e218929e3ff3ae091da1582de48fa0582802d8a`; qualified product-code revision: `5db2e0e5e6c405bb2b42c78dc1759a60a4e8de98`.

@@ -1,11 +1,13 @@
 # Phase 6 — Affiliate Economics & Profitability Intelligence
 
-Status: `DRAFT / PROJECT CONTROL REVIEW REQUIRED`  
-Roadmap reference: `PROJECT_CONTROL_PHASE6_SELECTION.md` / `PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md` / `PROJECT_CONTROL_ADR005_ACCEPTED.md` / latest reconciled `PLAN.md` / `PROJECT_STATUS.md`  
+Status: `APPROVED`  
+Roadmap reference: `PROJECT_CONTROL_PHASE6_SELECTION.md` / `PROJECT_CONTROL_PHASE6_RESEARCH_ACCEPTED.md` / `PROJECT_CONTROL_ADR005_ACCEPTED.md` / `PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md` / latest reconciled `PLAN.md` / `PROJECT_STATUS.md`  
 Created: `2026-10-06`  
 Last revised: `2026-10-07` (Remediated against Project Control Findings A–N)  
-Implementation authorization: **NOT AUTHORIZED**  
-Project Control approval: **PENDING**  
+Approved: `2026-10-07`  
+Implementation authorization: **AUTHORIZED**  
+Project Control approval: **APPROVED**  
+Approved plan baseline commit: `4713fa422eb7f407b78995a9d453711910efc354`  
 
 Authoritative actual selection baseline commit: `d97f00f7819e778954a76abe3605e1442ea4155d`  
 Accepted research artifact: [`research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md`](research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md) (accepted under `8c3f8949b8c9e61691c2e2756557e9abadc035b5`)  
@@ -1167,13 +1169,15 @@ The following non-blocking debt and deferred roadmap items remain active and pre
 Plan Metadata:
   Phase: "Phase 6 — Affiliate Economics & Profitability Intelligence"
   Scope: "VND-only, manual-first Product Economics Scenarios"
-  Plan Status: "DRAFT / PROJECT CONTROL REVIEW REQUIRED"
-  Implementation Authorization: "NOT AUTHORIZED"
-  Project Control Approval: "PENDING"
+  Plan Status: "APPROVED"
+  Implementation Authorization: "AUTHORIZED"
+  Project Control Approval: "APPROVED"
   Authoritative Research Artifact: "research/PHASE_6_AFFILIATE_ECONOMICS_RESEARCH.md" (commit 8c3f8949b8c9e61691c2e2756557e9abadc035b5)
   Accepted Architecture Decision: "docs/architecture/ADR-005.md" (commit d5fc2519abc8c67cc3751d62939fd7213b9794a6)
   ADR-005 Acceptance Record: "PROJECT_CONTROL_ADR005_ACCEPTED.md"
+  Plan Approval Record: "PROJECT_CONTROL_PHASE6_PLAN_APPROVED.md"
   Planning Baseline Commit: "d5fc2519abc8c67cc3751d62939fd7213b9794a6"
+  Approved Plan Baseline Commit: "4713fa422eb7f407b78995a9d453711910efc354"
   Authoritative Actual Selection HEAD Commit: "d97f00f7819e778954a76abe3605e1442ea4155d"
   Current Implemented Compatibility Version: "2"
   Target Compatibility Version: "3"
@@ -1181,5 +1185,6 @@ Plan Metadata:
   Workstreams Count: 10 (WS-0 through WS-9)
 ```
 
-**Implementation Warning:**  
-No production code, test code, schema modification, or dependency installation may begin until `00 — Project Control & Roadmap` has formally reviewed and approved this plan.
+**Implementation Authorization Notice:**  
+Plan formally reviewed and approved by `00 — Project Control & Roadmap`. Implementation is AUTHORIZED.
+

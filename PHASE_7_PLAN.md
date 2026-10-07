@@ -2,7 +2,7 @@
 
 ## Status
 
-**APPROVED — implementation authorized (2026-10-07).** This revised plan replaces the withdrawn 39-criterion proposal. Project Control's independent review and authorization are recorded in [`PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md`](PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md). It defines 28 acceptance criteria (`P7-AC-01` through `P7-AC-28`).
+**COMPLETE / ACCEPTED WITH DOCUMENTED DEFERRED ITEM (2026-10-07).** This revised plan replaced the withdrawn 39-criterion proposal and authorized implementation. Project Control approval is recorded in [`PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md`](PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md); completion acceptance is recorded in [`PROJECT_CONTROL_PHASE7_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE7_COMPLETION_ACCEPTED.md). The 28 criteria are individually classified in [`PHASE_7_COMPLETION_REPORT.md`](PHASE_7_COMPLETION_REPORT.md). P7-AC-19 metric-observation ingestion remains deferred because no validated public metric source was available; missing metrics remain null.
 
 ## Goal and boundaries
 

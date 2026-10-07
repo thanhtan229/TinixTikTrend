@@ -147,8 +147,20 @@ API crawler/status chỉ trả local_session_status = missing/available/invalid;
    - Lấy danh sách thành viên Bộ sưu tập kèm kinh tế mặc định: $\le 3$ câu lệnh SQL (Zero N+1).
    - So sánh 2–5 sản phẩm kèm kinh tế mặc định: $\le 3$ câu lệnh SQL (không có collection) / $\le 4$ câu lệnh SQL (có collection) (Zero N+1).
    - Benchmark 200 sản phẩm / 5.000 snapshots đạt độ trễ worst $< 20\text{ms}$ (vượt xa ngưỡng cứng $< 200\text{ms}$ và mục tiêu $< 50\text{ms}$).
+
 9. **Cô lập Không gian Làm việc & Ranh giới Phạm vi Ngoài:**
    - Saved View V1 (Trends & Watchlist) giữ nguyên cấu trúc tham số tĩnh, không mở rộng sang kinh tế trong MVP.
    - Không có luật cảnh báo kinh tế và không hỗ trợ xuất CSV kinh tế trong MVP.
    - Không tích hợp TikTok Affiliate API/OAuth, không cào Creator Center riêng tư, không CAPTCHA bypass, và không bổ sung thư viện phụ thuộc bên thứ ba.
+
+## Tín hiệu Nội dung TikTok (Phase 7 — 07/10/2026 — ADR-006)
+
+> **Trạng thái:** Đã hoàn tất và được Project Control chấp nhận, có giới hạn được hoãn; chi tiết tiêu chí trong [`PHASE_7_COMPLETION_REPORT.md`](PHASE_7_COMPLETION_REPORT.md). Runtime dùng compatibility marker `"4"`.
+
+1. **Liên kết do người vận hành chọn:** Video được thêm từ URL TikTok do operator cung cấp. Liên kết này không chứng minh video quảng bá sản phẩm; lượt tương tác không phải doanh số hay hoa hồng. Không có tìm kiếm đại trà hoặc suy đoán attribution.
+2. **Định danh video và lịch sử quan sát dùng chung:** `tiktok_videos` lưu một bản ghi theo `video_id` dạng chuỗi số chuẩn; `video_snapshots` lưu từng quan sát nullable, nguồn và thời điểm, có FK hạn chế xóa cùng index `(video_id, captured_at DESC)`. `ProductVideoLink` vẫn là bảng liên kết sản phẩm-video duy nhất. Gỡ một liên kết không xóa danh tính hoặc lịch sử video dùng chung.
+3. **Nguồn metadata và giới hạn metric:** Làm mới do người dùng kích hoạt gọi TikTok oEmbed để lấy metadata. oEmbed không cung cấp các bộ đếm tương tác công khai; vì thế không tạo snapshot metric từ nguồn này. Thiếu số liệu giữ `null`, và ingestion metric (`P7-AC-19`) được deferred đến khi có nguồn công khai được kiểm định.
+4. **Ranh giới an toàn:** Chỉ chấp nhận URL TikTok HTTPS thuộc host/path cho phép. Request kiểm tra đích công khai, timeout, redirect và kích thước response có giới hạn. Không dùng session/cookie, retry challenge, browser fallback, CAPTCHA solver hay bypass. Không tải/lưu video, audio hoặc raw page body. Thumbnail chỉ được dùng qua URL HTTPS công khai đã kiểm tra.
+5. **Cô lập domain:** Tốc độ tăng trưởng nội dung được tính riêng, cần hai quan sát có dữ liệu cách nhau 20–28 giờ; tốc độ chia theo thời gian thực tế. Counter giảm được giữ nguyên và gắn anomaly. Video không tác động Trend Score, confidence, trend state, alert, crawl scheduling hoặc affiliate economics.
+6. **Backup và hiệu năng:** Additive bootstrap tạo hai bảng mới và chỉ nâng marker khả chuyển `"3" → "4"` sau khi schema được kiểm định. Backup v4 giữ các bảng mới; ứng dụng từ chối backup v1–v3 theo ADR-004. Endpoint product-video dùng bốn truy vấn cố định, không tăng theo số dòng; benchmark Phase 7 đạt median 5.034 ms, p95 6.957 ms và worst 36.883 ms với bộ dữ liệu kiểm thử đã nêu trong báo cáo hoàn tất.
 

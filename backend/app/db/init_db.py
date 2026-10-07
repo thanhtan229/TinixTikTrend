@@ -2,7 +2,19 @@ from sqlalchemy import select, inspect
 from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
-from app.models import Category, Product, ProductSnapshot, CrawlRun, ProductVideoLink, WatchlistItem, SystemMetadata, Collection, CollectionItem, SavedView
+from app.models import (
+    Category,
+    Product,
+    ProductSnapshot,
+    CrawlRun,
+    ProductVideoLink,
+    WatchlistItem,
+    SystemMetadata,
+    Collection,
+    CollectionItem,
+    SavedView,
+    EconomicsScenario,
+)
 from app.core.logging import logger, log_event
 from app.models.quarantine import QuarantinedProduct
 from app.services.backup_service import BackupService

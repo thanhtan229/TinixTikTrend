@@ -10,12 +10,12 @@ from app.core.logging import logger, log_event
 from app.db.base import Base
 import app.models  # Ensure all SQLAlchemy models are registered on Base.metadata
 
-BACKUP_FILENAME_PATTERN = re.compile(r"^tinix-affiliate-v[12]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
-SAFETY_BACKUP_PATTERN = re.compile(r"^tinix-pre-restore-v[12]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
+BACKUP_FILENAME_PATTERN = re.compile(r"^tinix-affiliate-v[123]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
+SAFETY_BACKUP_PATTERN = re.compile(r"^tinix-pre-restore-v[123]-\d{8}T\d{6}\.\d{6}Z\.sqlite3$")
 
 
 class BackupService:
-    COMPATIBILITY_VERSION: str = "2"
+    COMPATIBILITY_VERSION: str = "3"
 
     @classmethod
     def get_required_schema(cls) -> Dict[str, Set[str]]:
@@ -155,7 +155,7 @@ class BackupService:
                 conn.close()
                 return False, (
                     f"Phiên bản tương thích không hợp lệ (yêu cầu '{cls.COMPATIBILITY_VERSION}', tìm thấy '{actual_val}'). "
-                    "Phase 5 chỉ hỗ trợ phục hồi cùng phiên bản."
+                    "Hệ thống chỉ hỗ trợ phục hồi cùng phiên bản tương thích."
                 )
 
             conn.close()

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.models.alert_rule import AlertRule
     from app.models.alert_event import AlertEvent
     from app.models.collection_item import CollectionItem
+    from app.models.economics_scenario import EconomicsScenario
 
 
 def utc_now() -> datetime:
@@ -75,6 +76,13 @@ class Product(Base):
         "CollectionItem",
         back_populates="product",
         cascade="all, delete-orphan",
+    )
+
+    economics_scenarios: Mapped[List["EconomicsScenario"]] = relationship(
+        "EconomicsScenario",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="EconomicsScenario.created_at.asc()",
     )
 
     def __repr__(self) -> str:

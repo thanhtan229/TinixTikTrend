@@ -12,6 +12,7 @@ from app.models.alert_event import AlertEvent
 from app.models.collection import Collection
 from app.models.collection_item import CollectionItem
 from app.models.saved_view import SavedView
+from app.models.economics_scenario import EconomicsScenario
 
 __all__ = [
     "Base",
@@ -28,4 +29,5 @@ __all__ = [
     "Collection",
     "CollectionItem",
     "SavedView",
+    "EconomicsScenario",
 ]

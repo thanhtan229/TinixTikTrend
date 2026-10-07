@@ -20,6 +20,9 @@ class DerivedEconomicsResult(NamedTuple):
     expected_contribution_vnd: Optional[int]
     return_on_cost_ratio: Optional[float]
 
+    def to_dict(self) -> Dict[str, Any]:
+        return self._asdict()
+
 
 def round_half_up_ratio(numerator: int, denominator: int) -> int:
     """

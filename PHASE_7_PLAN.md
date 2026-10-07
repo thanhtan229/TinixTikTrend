@@ -1,202 +1,67 @@
-# Phase 7 — TikTok Content Intelligence & Video Signals
+# Phase 7 Plan — TikTok Content Signals
 
-Status: `APPROVED`  
-Roadmap Reference: `PROJECT_CONTROL_PHASE7_SELECTION.md` / `PROJECT_CONTROL_PHASE7_RESEARCH_ACCEPTED.md` / `PROJECT_CONTROL_ADR006_ACCEPTED.md` / `PROJECT_CONTROL_PHASE7_PLAN_APPROVED.md` / `docs/architecture/ADR-006.md` / `PLAN.md` / `PROJECT_STATUS.md`  
-Created: `2026-10-07`  
-Approved: `2026-10-07`  
-Implementation Authorization: **AUTHORIZED**  
-Project Control Approval: **APPROVED**  
-Planning Baseline Commit: `8e36d7732a39a7751963283259687e174b88e146`  
-Authoritative Selection Commit: `5beb082`  
-Accepted Research Artifact: [`research/PHASE_7_CONTENT_INTELLIGENCE_RESEARCH.md`](research/PHASE_7_CONTENT_INTELLIGENCE_RESEARCH.md)  
-Accepted Architecture Decision: [`docs/architecture/ADR-006.md`](docs/architecture/ADR-006.md)  
-Qualified Repository Release Baseline: `ed442bf3c9bfaabaef01c054d2df9e9771c47bc2`  
-Qualified Product-Code Baseline: `2f3e4b4783307bdfa5e5ffbc7cfd49576572eb0f`  
+## Status
 
-Current Implemented Portable Backup Compatibility: `"3"`  
-Phase 7 Target Compatibility After Schema Implementation: `"4"`  
+**APPROVED — implementation authorized (2026-10-07).** This revised plan replaces the withdrawn 39-criterion proposal. Project Control's independent review and authorization are recorded in [`PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md`](PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md). It defines 28 acceptance criteria (`P7-AC-01` through `P7-AC-28`).
 
----
+## Goal and boundaries
 
-## 1. Objective
+Let an operator associate public TikTok videos with tracked products, inspect honestly sourced metadata and available public engagement observations, and refresh one video on demand. A link remains useful when no metric source is available.
 
-Phase 7 introduces content intelligence and video engagement signals into the product decision workspace:
+In scope: manual URL entry, existing `ProductVideoLink` association, globally deduplicated video identity and observation history, safe best-effort retrieval, content-only velocity, API and product detail UI, v4 backup compatibility.
 
-```text
-track → analyze → explain → monitor → alert → export → organize → review → compare → model economics → TRACK CONTENT SIGNALS → decide
-```
+Out of scope: broad TikTok search, automatic PDP harvesting, inferred product attribution, scheduled/batch refresh, use of TikTok login cookies, browser fallback, challenge bypass, media downloads, external paid APIs, OAuth, research API integration, blended opportunity scoring, changes to Phase 2 scores or Phase 6 economics.
 
-The phase objective is defined strictly and narrowly:
+## Acceptance criteria
 
-> **Allow an operator to discover, link, track, and measure TikTok video and creator engagement momentum associated with a tracked Product, providing transparent content velocity signals without altering the core product Trend Score or attempting fragile video media downloading.**
+### Correctness and domain boundaries
 
-The workflow specifically answers:
-> *“Is this product gaining creator momentum and viral video reach on TikTok, and how fast are views and engagement growing over the last 24 hours?”*
+- **P7-AC-01:** Video/content fields and calculations are separate from product market evidence and affiliate economics.
+- **P7-AC-02:** No Phase 2 Trend Score, confidence, trend state, alert, or crawl scheduling result changes when video data is added, refreshed, or removed.
+- **P7-AC-03:** The UI says operator association is not proof of product attribution, and engagement is not sales or payout.
+- **P7-AC-04:** No media binary or raw page body is downloaded or persisted.
+- **P7-AC-05:** Missing metadata/counters remain null; an old value is never copied into a new observation.
+- **P7-AC-06:** For each metric independently, velocity uses two successful non-null observations whose prior timestamp is 20–28 hours before the latest timestamp, divided by actual elapsed time; otherwise it is null.
+- **P7-AC-07:** Decreasing counters retain both raw observations and produce an explicit anomaly; they are not clamped or rewritten.
+- **P7-AC-08:** Engagement rate is null when views are absent/zero or required engagement fields are missing.
 
-### 1.1 What Phase 7 Does NOT Promise
-- Phase 7 does **NOT** promise or attempt automatic unguided hashtag/search scraping without CAPTCHA solvers.
-- Phase 7 does **NOT** promise video downloading, audio processing, or local video file storage.
-- Phase 7 does **NOT** claim that video views represent creator sales or affiliate payouts.
+### Persistence and recovery
 
----
+- **P7-AC-09:** `tiktok_videos` uses canonical numeric `video_id` text as its primary key and stores shared metadata once per video, independent of product association.
+- **P7-AC-10:** `ProductVideoLink` remains the sole product/video association; duplicate links for a product/video pair are rejected.
+- **P7-AC-11:** `video_snapshots` has its own integer observation ID, references `tiktok_videos.video_id` with delete restriction, stores nullable counters and source/capture metadata, and indexes `(video_id, captured_at DESC)`.
+- **P7-AC-12:** Detaching one product association preserves global video metadata and snapshots.
+- **P7-AC-13:** Additive schema bootstrap leaves all Phase 1–6 tables and data intact and advances compatibility to `"4"` only after schema validation.
+- **P7-AC-14:** v4 online backups include the new schema; v1–v3 candidates are rejected under ADR-004; session files remain excluded.
 
-## 2. Context & Current State
+### Retrieval and API
 
-### 2.1 Project Control State Supplied for this Plan
-- **Phase 1–6 Status:** `COMPLETE / ACCEPTED`.
-- **Phase 6 Source-Release Qualification:** `READY WITH DOCUMENTED NON-BLOCKING ISSUES` for the supported **Windows / local / source-based runtime** (qualified repository revision `ed442bf3c9bfaabaef01c054d2df9e9771c47bc2`, qualified product-code revision `2f3e4b4783307bdfa5e5ffbc7cfd49576572eb0f`).
-- **Phase 7 Status:** `SELECTED / RESEARCH COMPLETE / ARCHITECTURE ACCEPTED`.
-- **Research Gate:** `CLOSED / ACCEPTED` ([`research/PHASE_7_CONTENT_INTELLIGENCE_RESEARCH.md`](research/PHASE_7_CONTENT_INTELLIGENCE_RESEARCH.md)).
-- **Architecture Gate:** `CLOSED / ACCEPTED` ([`docs/architecture/ADR-006.md`](docs/architecture/ADR-006.md)).
-- **ADR-006 Acceptance Record:** [`PROJECT_CONTROL_ADR006_ACCEPTED.md`](PROJECT_CONTROL_ADR006_ACCEPTED.md).
-- **Implementation Authorization:** **NOT AUTHORIZED**.
+- **P7-AC-15:** Accept only canonicalizable HTTPS TikTok video URLs on exact approved hosts and paths; invalid input returns a structured 422.
+- **P7-AC-16:** All outbound requests and redirects use SSRF/public-destination validation and bounded timeout/response size.
+- **P7-AC-17:** Refresh is explicit and single-video. It never reads session cookies, automatically retries a blocked request, launches a browser, or solves/bypasses a challenge.
+- **P7-AC-18:** A 403/429, challenge, unsupported response, removed/private page, or unsafe redirect produces a clear bounded status and no metric snapshot.
+- **P7-AC-19:** A successful response records only recognized available fields, source, and capture timestamp; parser failures do not create fabricated observations.
+- **P7-AC-20:** Add, list, detach, and refresh APIs enforce product existence/quarantine rules and structured duplicate/not-found/error responses.
+- **P7-AC-21:** API and service tests cover shared video identity across products and detachment with history preservation.
 
-### 2.2 Existing Behavior that Remains Authoritative
-Phase 7 builds strictly upon established system boundaries:
-1. **Phase 2 Trend Analytics:** Preserves deterministic Trend Score, orthogonal evidence confidence, Why Trending explanations, null preservation, and quarantine exclusion. Content velocity metrics must never alter Trend Score.
-2. **Phase 3 Watchlist & Alerts:** `WatchlistItem` remains the sole scheduled-refresh authority. Alert evaluation remains post-commit, product-scoped, and governed by ADR-003.
-3. **Phase 4 Disaster Recovery:** Same-version restore policy (ADR-004), offline launcher-owned restore (`RESTORE.bat`), candidate file pre-validation, pre-restore safety backups, and host-bound session isolation remain unchanged.
-4. **Phase 5 Opportunity Workspace:** Collections remain purely for decision organization. Compare remains transient (2–5 products) and read-only.
-5. **Phase 6 Affiliate Economics:** Economics scenarios remain VND-only, manual-first, and governed by ADR-005.
-6. **Runtime Boundary:** Supported runtime remains Windows / local / source-based runtime. Standalone executable packaging remains deferred.
+### Product experience and validation
 
----
+- **P7-AC-22:** Product detail offers an add-video flow and displays associated videos, source, last refresh outcome, and unavailable/missing-metric states.
+- **P7-AC-23:** Refresh is an explicit user action with loading and failure states; no background refresh is scheduled.
+- **P7-AC-24:** Thumbnail URLs are constrained to public HTTPS destinations and UI fallbacks work without a thumbnail.
+- **P7-AC-25:** Automated tests use sanitized fixtures and do not depend on live TikTok availability.
+- **P7-AC-26:** Full backend/frontend tests, frontend typecheck/lint/build, migration/backup checks, and regression tests pass.
+- **P7-AC-27:** Video API query count is bounded and does not grow per row. Benchmark 200 products, 1,000 global videos, and 10,000 snapshots; document median and p95, with a 200 ms hard limit for product detail data retrieval in the local test environment.
+- **P7-AC-28:** Final QA verifies backend/frontend health after the mandatory local restart and confirms the running backend revision includes the change.
 
-## 3. Research Conclusions & Architecture Decisions
+## Implementation sequence
 
-This plan is strictly constrained by the accepted conclusions of [`research/PHASE_7_CONTENT_INTELLIGENCE_RESEARCH.md`](research/PHASE_7_CONTENT_INTELLIGENCE_RESEARCH.md) and the binding invariants of [`docs/architecture/ADR-006.md`](docs/architecture/ADR-006.md):
+1. Verify clean Phase 6 baseline and preserve a backup-safe test strategy.
+2. Add pure content metric calculations and fixture-backed parsing contracts.
+3. Add global video and snapshot models; reuse `ProductVideoLink`; implement additive bootstrap and v4 compatibility.
+4. Add strict URL validation and bounded HTTP retrieval with no challenge fallback.
+5. Add service/API workflows and tests for shared identity/history.
+6. Add product detail video section and explicit add/refresh/remove actions with unavailable states and disclosure.
+7. Verify backups, old-version rejection, query budgets, full suites and runtime health.
 
-1. **Domain Separation:** Market Evidence (Phases 1–3), User Economics Assumptions (Phase 6), and Content Intelligence (Phase 7) must remain strictly separated.
-2. **Attribution Boundary:** Video views and likes represent social engagement, not affiliate attribution.
-3. **Association Modalities:** User-assisted URL input + PDP showcase link harvesting.
-4. **HTTP-First SSR Extraction:** Extract video stats directly from `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">` (or `SIGI_STATE`), with headless Playwright fallback for WAF challenges.
-5. **Zero Media Binary Storage:** No video (.mp4, .webm) or audio files are downloaded or saved to disk.
-6. **Lossless Integer Arithmetic & Velocity Formulas:** 24h velocity uses bounded candidate window $[20\text{h}, 28\text{h}]$, exact integer ratio round-half-up, and non-negative clamping.
-7. **Two New Models:** Additive tables `product_videos` and `video_snapshots`.
-8. **Disaster Recovery Compatibility `"3" → "4"`:** Adding content tables advances `portable_backup_compatibility_version` to `"4"` under ADR-004 same-version restore rules.
-9. **Query Budgets (Zero N+1):** Product detail page with videos executes $\le 3$ SQL queries. Zero HTTP fanout.
-
----
-
-## 4. Authoritative Acceptance Criteria
-
-### Workstream 1: Content Velocity Engine & Mathematical Modeling
-- **`P7-AC-01` [Score Independence]:** Content metrics must never alter, weigh into, or contaminate the Phase 2 `Trend Score`, trend confidence, trend state, or Why Trending explanations.
-- **`P7-AC-02` [Attribution Transparency]:** Views, likes, and engagement velocity must be presented with clear disclaimers that content signals do not represent creator sales volume or guaranteed affiliate revenue.
-- **`P7-AC-03` [Zero Media Binary Storage]:** No video binary files (.mp4, .webm) or raw audio streams are stored or cached locally. Only metadata, metrics, and public HTTPS image thumbnail URLs are persisted.
-- **`P7-AC-04` [24h Views Velocity Calculation]:** When a video has observations across a candidate window of $[20\text{h}, 28\text{h}]$, views velocity must be calculated as $\Delta \text{views} / \Delta t_{\text{days}}$ with exact elapsed time semantics.
-- **`P7-AC-05` [24h Likes Velocity Calculation]:** Likes velocity must be calculated as $\Delta \text{likes} / \Delta t_{\text{days}}$ over the same candidate window.
-- **`P7-AC-06` [Engagement Metrics]:** Total engagement $E = \text{likes} + \text{comments} + \text{shares} + \text{collects}$, engagement velocity $V_E = \Delta E / \Delta t_{\text{days}}$, and engagement rate $E / \text{views}$ must be deterministically calculated.
-- **`P7-AC-07` [Null Preservation]:** When a video has $< 20\text{h}$ of history, all velocity metrics must evaluate strictly to `null`. Missing metrics must never be falsified as `0`.
-- **`P7-AC-08` [Non-Negative Clamping & Anomaly Flagging]:** If platform metric adjustments cause $\Delta < 0$, velocity must clamp to $0$ and set `anomaly_detected = True`.
-- **`P7-AC-09` [Rational Rounding Authority]:** Integer displays must use exact integer ratio round-half-up $(2N + D) // (2D)$ without floating-point representation drift.
-
-### Workstream 2: Persistent Data Models & Concurrency
-- **`P7-AC-10` [Model Definition: `ProductVideo`]:** Additive table `product_videos` must persist `id`, `product_id`, `video_id`, `video_url`, `creator_handle`, `creator_nickname`, `creator_avatar_url`, `description`, `thumbnail_url`, `published_at`, `source_type`, `created_at`, `updated_at`.
-- **`P7-AC-11` [Model Definition: `VideoSnapshot`]:** Additive table `video_snapshots` must persist `id`, `video_id`, `play_count`, `digg_count`, `comment_count`, `share_count`, `collect_count`, `captured_at`, `source_channel`, `is_available`.
-- **`P7-AC-12` [Unique Constraint & Indexing]:** `product_videos` must enforce `UNIQUE(product_id, video_id)`, with indexing on `product_id` and `video_id`.
-- **`P7-AC-13` [Snapshot Composite Index]:** `video_snapshots` must define composite index `ix_video_snapshots_video_captured (video_id, captured_at DESC)`.
-- **`P7-AC-14` [Foreign Key Cascades]:** Deleting a Product cascades cleanly to delete associated `product_videos` and `video_snapshots`.
-- **`P7-AC-15` [Additive Schema Bootstrap]:** Schema bootstrap executes via `Base.metadata.create_all()` without Alembic migrations, leaving existing tables intact.
-
-### Workstream 3: Video Collection & Extraction Engine
-- **`P7-AC-16` [URL Validation & Canonicalization]:** System must validate TikTok video URLs matching `^https?://(?:www\.)?tiktok\.com/@([a-zA-Z0-9_.-]+)/video/(\d+)` and reject invalid formats with structured 422 errors.
-- **`P7-AC-17` [HTTP-First SSR Extraction]:** Collector extracts metadata from `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">` (or `SIGI_STATE`) with browser headers.
-- **`P7-AC-18` [Playwright Fallback]:** Collector falls back to headless Playwright session reuse if WAF challenges or JavaScript-only rendering occur.
-- **`P7-AC-19` [Unavailable Video Handling]:** If a video is removed or marked private, the snapshot records `is_available = False` without deleting historical records.
-- **`P7-AC-20` [PDP Showcase Video Harvesting]:** When crawling a TikTok Shop PDP, collector harvests creator showcase video URLs and automatically attaches them to the Product.
-- **`P7-AC-21` [On-Demand & Scheduled Refresh]:** System supports both on-demand single video refresh and batch refresh of all videos associated with watched products.
-
-### Workstream 4: REST API Endpoints & Contract
-- **`P7-AC-22` [List Product Videos API]:** `GET /api/products/{id}/videos` returns associated videos with latest snapshot, metrics, and velocity.
-- **`P7-AC-23` [Add Video API]:** `POST /api/products/{id}/videos` accepts `{video_url}` and returns created `ProductVideo` with initial snapshot.
-- **`P7-AC-24` [Duplicate Video Rejection]:** Attempting to add an already associated video returns structured 409 Conflict.
-- **`P7-AC-25` [Remove Video API]:** `DELETE /api/products/{id}/videos/{video_id}` detaches the video from the product cleanly.
-- **`P7-AC-26` [Refresh Video API]:** `POST /api/products/{id}/videos/{video_id}/refresh` triggers on-demand metrics capture.
-- **`P7-AC-27` [Quarantine Protection]:** Operations on quarantined legacy products are rejected with structured 404 or 422 errors.
-
-### Workstream 5: Disaster Recovery & Backup Compatibility
-- **`P7-AC-28` [Compatibility Marker Advance `"3" → "4"`]:** Schema initialization advances `portable_backup_compatibility_version = "4"` in `system_metadata`.
-- **`P7-AC-29` [Legacy Backup Rejection]:** Restoring a `v1`, `v2`, or `v3` backup into a `v4` runtime is deterministically rejected with structured HTTP 400.
-- **`P7-AC-30` [Version 4 Online Backup]:** `BACKUP.bat` produces valid `tinix-affiliate-v4-*.sqlite3` online backups containing video tables.
-- **`P7-AC-31` [Host-Bound Session Isolation]:** Session files (`tiktok-session.json`) remain strictly excluded from all backups and exports.
-
-### Workstream 6: Performance & Query Budgets
-- **`P7-AC-32` [Product Detail Query Budget]:** Fetching Product Detail with videos executes $\le 3$ SQL queries.
-- **`P7-AC-33` [Zero N+1 Query Invariant]:** Video list and comparison queries must not execute N+1 database queries.
-- **`P7-AC-34` [Representative Benchmark Gate]:** On a 200-product / 1,000-video / 10,000-snapshot synthetic dataset, detail rendering executes in $< 20\text{ms}$ (hard gate: $< 200\text{ms}$).
-
-### Workstream 7: Frontend Workspace & User Experience
-- **`P7-AC-35` [Product Videos Section]:** Dedicated UI section on Product Detail page displaying associated videos in a responsive card layout.
-- **`P7-AC-36` [Velocity Badges & Metrics]:** Badges for 24h views velocity, likes velocity, and engagement rate.
-- **`P7-AC-37` [Add Video Modal]:** Operator modal with URL input, real-time validation, and progress indicator.
-- **`P7-AC-38` [Transparency Disclaimer]:** Prominent disclaimer banner clarifying that video metrics reflect social reach, not direct creator payout.
-- **`P7-AC-39` [Empty & Loading States]:** Clear empty states when no videos are linked and loading spinners during on-demand refresh.
-
----
-
-## 5. Workstream Breakdown & Implementation Sequence
-
-```mermaid
-flowchart TD
-    WS0[WS-0: Governance & Baseline Ancestry] --> WS1[WS-1: Content Velocity Analytics Engine]
-    WS0 --> WS2[WS-2: Database Model & Schema Bootstrap]
-    WS1 --> WS3[WS-3: TikTok Video Collector & SSR Parser]
-    WS2 --> WS3
-    WS3 --> WS4[WS-4: Content Service & Association Workflows]
-    WS4 --> WS5[WS-5: REST API Endpoints & Error Handling]
-    WS2 --> WS6[WS-6: Disaster Recovery & Compatibility v4]
-    WS4 --> WS7[WS-7: Query Budgets & Performance Benchmarks]
-    WS5 --> WS8[WS-8: Frontend Content Section & Modal]
-    WS6 --> WS9[WS-9: Full Suite Validation & Completion Report]
-    WS7 --> WS9
-    WS8 --> WS9
-```
-
-- **WS-0: Governance, Baseline Ancestry & Working Tree Verification**
-  - Verify clean working tree, HEAD commit ancestry, and unchanged Phase 6 baselines.
-- **WS-1: Content Velocity Analytics Engine (`backend/app/analytics/content_velocity.py`)**
-  - Implement pure calculation engine: $V_{\text{views}}$, $V_{\text{likes}}$, $V_{\text{engagement}}$, candidate window bounding, null-safety, integer ratio rounding.
-- **WS-2: Database Models & Additive Bootstrap (`backend/app/models/content.py`)**
-  - Create `ProductVideo` and `VideoSnapshot` SQLAlchemy models with unique constraints and composite indices.
-  - Implement additive bootstrap logic and dynamic metadata derivation.
-- **WS-3: TikTok Video Collector & SSR Parser (`backend/app/collectors/tiktok_video/`)**
-  - Build HTTP-first SSR extractor for `__UNIVERSAL_DATA_FOR_REHYDRATION__` and `SIGI_STATE`.
-  - Integrate Playwright fallback for WAF challenges.
-- **WS-4: Content Service & Association Workflows (`backend/app/services/content_service.py`)**
-  - Implement video association, URL normalization, deduplication, on-demand refresh, and PDP harvesting.
-- **WS-5: REST API Endpoints (`backend/app/api/videos.py`)**
-  - Expose `GET /api/products/{id}/videos`, `POST /api/products/{id}/videos`, `DELETE /api/products/{id}/videos/{video_id}`, `POST /api/products/{id}/videos/{video_id}/refresh`.
-- **WS-6: Disaster Recovery & Backup Compatibility Version `"4"`**
-  - Advance `portable_backup_compatibility_version = "4"` in `system_metadata`.
-  - Update candidate restore validator to reject v1–v3 backups.
-  - Verify `BACKUP.bat` produces v4 backups.
-- **WS-7: Query Budgets & Performance Benchmarks**
-  - Write focused query budget tests and 200-product / 1,000-video / 10,000-snapshot benchmark test.
-- **WS-8: Frontend Workspace Components (`ProductVideosSection.tsx`, `AddVideoModal.tsx`)**
-  - Implement video cards, velocity badges, add modal, refresh button, and commercial disclaimer banner.
-- **WS-9: Full Suite Validation & Completion Report**
-  - Run full backend pytest, frontend Vitest, TypeScript typecheck, ESLint, Next.js build, healthcheck, and author completion report.
-
----
-
-## 6. Test & Validation Matrix
-
-| Test Domain | Target Suite | Key Invariants Tested |
-| :--- | :--- | :--- |
-| **Pure Analytics Engine** | `test_content_velocity.py` | 24h window bounding $[20\text{h}, 28\text{h}]$, null-safety, clamping, exact integer ratio rounding |
-| **Model & Bootstrap** | `test_content_models.py` | Unique constraint, composite indices, foreign key cascades, additive bootstrap |
-| **Video Collector & SSR** | `test_video_collector.py` | Script tag regex extraction, JSON navigation, Playwright fallback, unavailable handling |
-| **Content Service & API** | `test_content_api.py` | Add/list/delete/refresh endpoints, 409 duplicate rejection, 422 URL validation, quarantine protection |
-| **Disaster Recovery** | `test_backup_v4.py` | v1-v3 rejection, v4 round-trip, manifest guard, credential isolation |
-| **Query Budgets & Latency** | `test_performance_and_queries.py` | $\le 3$ SQL queries on detail, Zero N+1, sub-20ms benchmark latency |
-| **Frontend UI Integration** | `phase7-content.test.tsx` | Video cards rendering, Add Video modal submission, velocity badge displays, disclaimer banner |
-
----
-
-## 7. Plan Status & Authorization
-
-- **Plan Status:** `APPROVED`
-- **Implementation Status:** **AUTHORIZED**
-- **Approval Record:** [`PROJECT_CONTROL_PHASE7_PLAN_APPROVED.md`](PROJECT_CONTROL_PHASE7_PLAN_APPROVED.md)
-- **Next Step:** Proceed to Workstream WS-0 through WS-9 execution under `PHASE IMPLEMENTATION`.
+No `.exe`, installer, release artifact, remote push, or production deployment is in scope.

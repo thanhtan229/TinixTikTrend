@@ -1,5 +1,7 @@
 # Project Control ADR-006 Acceptance Record
 
+> **Historical decision superseded 2026-10-07.** ADR-006 was revised after package review. The prior acceptance does not apply to the revised ADR. See [`PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md`](PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md).
+
 - **Date:** 2026-10-07
 - **Authority / Role:** `00 — Project Control & Roadmap`
 - **ADR Title:** [`ADR-006 — TikTok Content Intelligence & Video Signals Architecture`](docs/architecture/ADR-006.md)

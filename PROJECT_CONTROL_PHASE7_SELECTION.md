@@ -1,14 +1,16 @@
 # Project Control Phase 7 Selection Record
 
+> **Reconciled 2026-10-07:** Phase 7 remains selected. The initial package review superseded the earlier research/ADR/plan records; the corrected research, ADR-006, and plan were independently reviewed and approved in [`PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md`](PROJECT_CONTROL_PHASE7_PACKAGE_APPROVED.md). Implementation is **AUTHORIZED** against `P7-AC-01`–`P7-AC-28`.
+
 - **Date:** 2026-10-07
 - **Authority:** `00 — Project Control & Roadmap`
 - **Selected Phase:** Phase 7 — Content Intelligence & Video Signals
-- **Phase 7 Status:** `SELECTED / RESEARCH REQUIRED`
-- **Research Gate:** `OPEN / RESEARCH REQUIRED`
-- **Research Status:** `NOT YET STARTED`
-- **Phase Plan Status:** `NOT STARTED`
-- **Implementation Status:** `NOT AUTHORIZED`
-- **Acceptance Criteria:** `NONE DEFINED YET` (no Phase 7 acceptance criteria exist yet)
+- **Phase 7 Status:** `SELECTED / PACKAGE APPROVED / IMPLEMENTATION AUTHORIZED`
+- **Research Gate:** `CLOSED / ACCEPTED`
+- **Research Status:** `REVISED / ACCEPTED`
+- **Phase Plan Status:** `APPROVED` ([`PHASE_7_PLAN.md`](PHASE_7_PLAN.md))
+- **Implementation Status:** `AUTHORIZED`
+- **Acceptance Criteria:** 28 criteria (`P7-AC-01` through `P7-AC-28`)
 - **Previous Release State:** Phase 6 source-release qualification remains **`READY WITH DOCUMENTED NON-BLOCKING ISSUES`** for the supported **Windows / local / source-based runtime** (qualified repository revision: `ed442bf3c9bfaabaef01c054d2df9e9771c47bc2`; qualified product-code revision: `2f3e4b4783307bdfa5e5ffbc7cfd49576572eb0f`; latest release-state reconciliation commit: `8e36d7732a39a7751963283259687e174b88e146`). Selection of Phase 7 does not invalidate the qualified Phase 6 release.
 
 ---
@@ -36,12 +38,14 @@ The next critical missing dimension is **Content Signals**: identifying whether 
 
 ---
 
-## 2. Research Gate & Planning Policy
+## 2. Historical Research Gate & Planning Policy
 
-- **Phase 7 Status:** `SELECTED / RESEARCH REQUIRED`
-- **Research Status:** `NOT YET STARTED`
-- **Plan Status:** `NOT STARTED`
-- **Implementation Status:** `NOT AUTHORIZED`
+The following agenda records the original research questions and is retained as historical context. The revised research gate is closed and the plan is approved by the record linked above.
+
+- **Historical Phase 7 Status:** `SELECTED / RESEARCH REQUIRED`
+- **Historical Research Status:** `NOT YET STARTED`
+- **Historical Plan Status:** `NOT STARTED`
+- **Historical Implementation Status:** `NOT AUTHORIZED`
 - **Mandatory Policy:** Research must precede planning. **Phase 7 planning is strictly blocked until comprehensive research is completed, documented, and formally accepted by Project Control.**
 - **Active Role for Next Step:** `01 — Architecture & Repo Research`.
 
@@ -118,5 +122,5 @@ The following accepted non-blocking debt and deferred scope items are preserved 
 
 ## 6. Next Immediate Action
 
-- **Active Role:** `01 — Architecture & Repo Research`
-- **Action:** Initiate comprehensive Phase 7 technical and architectural research, investigating product-video association, TikTok video metadata extraction, content velocity mathematics, and schema design.
+- **Active Role:** `00 — Project Control & Roadmap` (independent reviewer)
+- **Action:** Review the revised research, ADR-006, and phase plan against [`PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md`](PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md), then reconcile each gate.

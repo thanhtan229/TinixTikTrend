@@ -1,5 +1,7 @@
 # Project Control Phase 7 Research Acceptance Record
 
+> **Historical decision superseded 2026-10-07.** The accepted research relied on unsupported internal-payload stability and challenge-fallback assumptions. See [`PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md`](PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md) and revised research. This record does not authorize the current Phase 7 package.
+
 - **Date:** 2026-10-07
 - **Authority / Role:** `00 — Project Control & Roadmap`
 - **Selected Phase:** Phase 7 — Content Intelligence & Video Signals

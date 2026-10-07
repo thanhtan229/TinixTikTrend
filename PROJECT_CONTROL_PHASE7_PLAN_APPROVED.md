@@ -1,5 +1,7 @@
 # Project Control Phase 7 Plan Approval Record
 
+> **Approval withdrawn 2026-10-07.** The plan was based on unsupported collection assumptions and a per-association snapshot schema. It is replaced by the draft [`PHASE_7_PLAN.md`](PHASE_7_PLAN.md); implementation is **NOT AUTHORIZED** pending independent review and a new durable approval. See [`PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md`](PROJECT_CONTROL_PHASE7_PACKAGE_REVIEW.md).
+
 - **Date:** 2026-10-07
 - **Authority / Role:** `00 — Project Control & Roadmap`
 - **Decision:** `PHASE 7 PLAN APPROVED & IMPLEMENTATION AUTHORIZED`

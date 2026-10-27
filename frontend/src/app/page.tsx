@@ -552,8 +552,9 @@ export default function DashboardPage() {
           {(activeTab === "trending" || activeTab === "watchlist") && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-900/30 border border-slate-800/60 text-xs">
               <div>
-                <label className="block text-slate-400 font-medium mb-1.5">Trạng thái Dữ liệu:</label>
+                <label htmlFor="trend-state-filter" className="block text-slate-400 font-medium mb-1.5">Trạng thái Dữ liệu:</label>
                 <select
+                  id="trend-state-filter"
                   aria-label="Trạng thái dữ liệu"
                   value={trendState}
                   onChange={(e) => setTrendState(e.target.value)}
@@ -567,8 +568,9 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1.5">Độ tin cậy & Bằng chứng:</label>
+                <label htmlFor="evidence-filter" className="block text-slate-400 font-medium mb-1.5">Độ tin cậy & Bằng chứng:</label>
                 <select
+                  id="evidence-filter"
                   aria-label="Độ tin cậy và bằng chứng"
                   value={evidenceFilter}
                   onChange={(e) => setEvidenceFilter(e.target.value)}
@@ -582,9 +584,10 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1.5">Sắp xếp theo:</label>
+                <label htmlFor="sort-by" className="block text-slate-400 font-medium mb-1.5">Sắp xếp theo:</label>
                 <div className="flex gap-2">
                   <select
+                    id="sort-by"
                     aria-label="Sắp xếp danh sách"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}

@@ -126,8 +126,9 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="block text-slate-400 mb-1">Chọn Bộ sưu tập</label>
+            <label htmlFor="collection-select" className="block text-slate-400 mb-1">Chọn Bộ sưu tập</label>
             <select
+              id="collection-select"
               aria-label="Chọn bộ sưu tập"
               value={selectedCollectionId}
               onChange={(e) => {
@@ -147,8 +148,9 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({
 
           {selectedCollectionId === "new" && (
             <div>
-              <label className="block text-slate-400 mb-1">Tên bộ sưu tập mới</label>
+              <label htmlFor="new-collection-name" className="block text-slate-400 mb-1">Tên bộ sưu tập mới</label>
               <input
+                id="new-collection-name"
                 type="text"
                 placeholder="VD: Sản phẩm Tiềm năng Q4"
                 value={newCollectionName}
@@ -160,8 +162,9 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({
           )}
 
           <div>
-            <label className="block text-slate-400 mb-1">Trạng thái đánh giá ban đầu</label>
+            <label htmlFor="initial-review-status" className="block text-slate-400 mb-1">Trạng thái đánh giá ban đầu</label>
             <select
+              id="initial-review-status"
               aria-label="Trạng thái đánh giá ban đầu"
               value={reviewStatus}
               onChange={(e) => setReviewStatus(e.target.value as ReviewStatus)}
@@ -175,8 +178,9 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">Ghi chú quyết định (Notes)</label>
+            <label htmlFor="collection-decision-notes" className="block text-slate-400 mb-1">Ghi chú quyết định (Notes)</label>
             <textarea
+              id="collection-decision-notes"
               rows={2}
               placeholder="VD: Nhà bán uy tín, biên độ lợi nhuận ước tính > 30%..."
               value={notes}

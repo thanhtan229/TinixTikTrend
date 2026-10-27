@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CrawlerControl } from '@/components/CrawlerControl';
 import DashboardPage from '@/app/page';
-import { fetchCrawlerStatus, triggerCrawlerRun, fetchDashboardSummary, fetchTrends, fetchWatchedProductIds } from '@/lib/api';
+import { fetchCrawlerStatus, triggerCrawlerRun, fetchDashboardSummary, fetchTrends, fetchWatchedProductIds, fetchSavedViews } from '@/lib/api';
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>();
   return {
@@ -12,6 +12,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     fetchDashboardSummary: vi.fn(),
     fetchTrends: vi.fn(),
     fetchWatchedProductIds: vi.fn().mockResolvedValue([]),
+    fetchSavedViews: vi.fn().mockResolvedValue([]),
   };
 });
 vi.mock('@/components/ProductCard', () => ({ ProductCard: ({ product }: {product:{title:string}}) => <div>{product.title}</div> }));
@@ -21,6 +22,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(fetchCrawlerStatus).mockResolvedValue(idle);
   vi.mocked(fetchWatchedProductIds).mockResolvedValue([]);
+  vi.mocked(fetchSavedViews).mockResolvedValue([]);
 });
 describe('production UI recovery', () => {
   it('refreshes once after a triggered crawl stops and displays failure', async () => {

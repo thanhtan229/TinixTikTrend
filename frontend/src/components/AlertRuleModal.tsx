@@ -174,15 +174,18 @@ export const AlertRuleModal: React.FC<AlertRuleModalProps> = ({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="alert-rules-modal-title"
+      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={(e) => {
+      onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="alert-rules-modal-title"
+        className="relative w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto"
+      >
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center space-x-3">
@@ -299,10 +302,11 @@ export const AlertRuleModal: React.FC<AlertRuleModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-slate-300 font-medium mb-1.5">
+              <label htmlFor="alert-rule-type" className="block text-xs text-slate-300 font-medium mb-1.5">
                 Loại cảnh báo:
               </label>
               <select
+                id="alert-rule-type"
                 value={ruleType}
                 onChange={(e) => {
                   const val = e.target.value as any;
@@ -321,10 +325,11 @@ export const AlertRuleModal: React.FC<AlertRuleModalProps> = ({
 
             {ruleType === "price_change_pct" ? (
               <div>
-                <label className="block text-xs text-slate-300 font-medium mb-1.5">
+                <label htmlFor="alert-rule-direction" className="block text-xs text-slate-300 font-medium mb-1.5">
                   Chiều biến động giá:
                 </label>
                 <select
+                  id="alert-rule-direction"
                   value={direction}
                   onChange={(e) => setDirection(e.target.value as any)}
                   className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
@@ -336,10 +341,11 @@ export const AlertRuleModal: React.FC<AlertRuleModalProps> = ({
               </div>
             ) : (
               <div>
-                <label className="block text-xs text-slate-300 font-medium mb-1.5">
+                <label htmlFor="alert-rule-unit" className="block text-xs text-slate-300 font-medium mb-1.5">
                   Đơn vị tính:
                 </label>
                 <input
+                  id="alert-rule-unit"
                   type="text"
                   disabled
                   value={ruleType === "sales_velocity_above" ? "đơn / ngày" : "điểm (thang 100)"}
@@ -349,10 +355,11 @@ export const AlertRuleModal: React.FC<AlertRuleModalProps> = ({
             )}
 
             <div>
-              <label className="block text-xs text-slate-300 font-medium mb-1.5">
+              <label htmlFor="alert-rule-threshold" className="block text-xs text-slate-300 font-medium mb-1.5">
                 Ngưỡng kích hoạt ({ruleType === "price_change_pct" ? "%" : ruleType === "sales_velocity_above" ? "đơn/ngày" : "điểm"}):
               </label>
               <input
+                id="alert-rule-threshold"
                 type="number"
                 step="any"
                 min="0.01"
@@ -365,10 +372,11 @@ export const AlertRuleModal: React.FC<AlertRuleModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs text-slate-300 font-medium mb-1.5">
+              <label htmlFor="alert-rule-cooldown" className="block text-xs text-slate-300 font-medium mb-1.5">
                 Thời gian chờ giãn cách (Cooldown phút):
               </label>
               <input
+                id="alert-rule-cooldown"
                 type="number"
                 min="0"
                 step="1"

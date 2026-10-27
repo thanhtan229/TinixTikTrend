@@ -740,10 +740,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
             <form onSubmit={handleCreateScenario} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
+                <label htmlFor="create-scenario-name" className="block text-slate-300 font-semibold mb-1">
                   Tên kịch bản <span className="text-rose-400">*</span>
                 </label>
                 <input
+                  id="create-scenario-name"
                   type="text"
                   required
                   placeholder="Ví dụ: Kịch bản tiêu chuẩn, Hợp tác độc quyền..."
@@ -755,10 +756,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="create-commission-pct" className="block text-slate-300 font-semibold mb-1">
                     Tỷ lệ hoa hồng (%)
                   </label>
                   <input
+                    id="create-commission-pct"
                     type="number"
                     step="0.01"
                     min="0"
@@ -772,9 +774,9 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <span className="block text-slate-300 font-semibold mb-1">
                     Nguồn cơ sở tính hoa hồng
-                  </label>
+                  </span>
                   <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
                     <input
                       type="checkbox"
@@ -789,10 +791,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
               {!formUseObservedPrice && (
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="create-commission-base" className="block text-slate-300 font-semibold mb-1">
                     Cơ sở tính hoa hồng (VND)
                   </label>
                   <input
+                    id="create-commission-base"
                     type="number"
                     step="1"
                     min="0"
@@ -808,8 +811,9 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                 <span className="text-slate-400 font-semibold block mb-2">Chi phí cố định chiến dịch (VND)</span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-slate-400 text-[11px] mb-1">Chi phí mẫu</label>
+                    <label htmlFor="create-sample-cost" className="block text-slate-400 text-[11px] mb-1">Chi phí mẫu</label>
                     <input
+                      id="create-sample-cost"
                       type="number"
                       step="1"
                       min="0"
@@ -820,8 +824,9 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-400 text-[11px] mb-1">Sản xuất nội dung</label>
+                    <label htmlFor="create-content-cost" className="block text-slate-400 text-[11px] mb-1">Sản xuất nội dung</label>
                     <input
+                      id="create-content-cost"
                       type="number"
                       step="1"
                       min="0"
@@ -832,8 +837,9 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-400 text-[11px] mb-1">Quảng bá / Ads</label>
+                    <label htmlFor="create-promotion-cost" className="block text-slate-400 text-[11px] mb-1">Quảng bá / Ads</label>
                     <input
+                      id="create-promotion-cost"
                       type="number"
                       step="1"
                       min="0"
@@ -848,10 +854,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-800 pt-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="create-variable-cost" className="block text-slate-300 font-semibold mb-1">
                     Chi phí biến đổi / đơn (VND)
                   </label>
                   <input
+                    id="create-variable-cost"
                     type="number"
                     step="1"
                     min="0"
@@ -863,10 +870,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="create-expected-orders" className="block text-slate-300 font-semibold mb-1">
                     Số đơn dự kiến (tùy chọn)
                   </label>
                   <input
+                    id="create-expected-orders"
                     type="number"
                     step="1"
                     min="0"
@@ -914,10 +922,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
             <form onSubmit={handleUpdateScenario} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
+                <label htmlFor="edit-scenario-name" className="block text-slate-300 font-semibold mb-1">
                   Tên kịch bản <span className="text-rose-400">*</span>
                 </label>
                 <input
+                  id="edit-scenario-name"
                   type="text"
                   required
                   value={formName}
@@ -928,10 +937,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="edit-commission-pct" className="block text-slate-300 font-semibold mb-1">
                     Tỷ lệ hoa hồng (%)
                   </label>
                   <input
+                    id="edit-commission-pct"
                     type="number"
                     step="0.01"
                     min="0"
@@ -944,10 +954,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="edit-commission-base" className="block text-slate-300 font-semibold mb-1">
                     Cơ sở tính hoa hồng (VND)
                   </label>
                   <input
+                    id="edit-commission-base"
                     type="number"
                     step="1"
                     min="0"
@@ -963,8 +974,9 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                 <span className="text-slate-400 font-semibold block mb-2">Chi phí cố định chiến dịch (VND)</span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-slate-400 text-[11px] mb-1">Chi phí mẫu</label>
+                    <label htmlFor="edit-sample-cost" className="block text-slate-400 text-[11px] mb-1">Chi phí mẫu</label>
                     <input
+                      id="edit-sample-cost"
                       type="number"
                       step="1"
                       min="0"
@@ -974,8 +986,9 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-400 text-[11px] mb-1">Sản xuất nội dung</label>
+                    <label htmlFor="edit-content-cost" className="block text-slate-400 text-[11px] mb-1">Sản xuất nội dung</label>
                     <input
+                      id="edit-content-cost"
                       type="number"
                       step="1"
                       min="0"
@@ -985,8 +998,9 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-400 text-[11px] mb-1">Quảng bá / Ads</label>
+                    <label htmlFor="edit-promotion-cost" className="block text-slate-400 text-[11px] mb-1">Quảng bá / Ads</label>
                     <input
+                      id="edit-promotion-cost"
                       type="number"
                       step="1"
                       min="0"
@@ -1000,10 +1014,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-800 pt-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="edit-variable-cost" className="block text-slate-300 font-semibold mb-1">
                     Chi phí biến đổi / đơn (VND)
                   </label>
                   <input
+                    id="edit-variable-cost"
                     type="number"
                     step="1"
                     min="0"
@@ -1014,10 +1029,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label htmlFor="edit-expected-orders" className="block text-slate-300 font-semibold mb-1">
                     Số đơn dự kiến (tùy chọn)
                   </label>
                   <input
+                    id="edit-expected-orders"
                     type="number"
                     step="1"
                     min="0"
@@ -1064,10 +1080,11 @@ export const ProductEconomicsSection: React.FC<ProductEconomicsSectionProps> = (
 
             <form onSubmit={handleDuplicate} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
+                <label htmlFor="duplicate-scenario-name" className="block text-slate-300 font-semibold mb-1">
                   Tên kịch bản mới <span className="text-rose-400">*</span>
                 </label>
                 <input
+                  id="duplicate-scenario-name"
                   type="text"
                   required
                   value={duplicateName}

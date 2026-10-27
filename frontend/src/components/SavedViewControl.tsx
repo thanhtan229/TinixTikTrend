@@ -210,8 +210,9 @@ export const SavedViewControl: React.FC<SavedViewControlProps> = ({
             {error && <div className="text-rose-400 text-xs">{error}</div>}
             <form onSubmit={handleSave} className="space-y-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Tên chế độ xem</label>
+                <label htmlFor="saved-view-name" className="block text-xs text-slate-400 mb-1">Tên chế độ xem</label>
                 <input
+                  id="saved-view-name"
                   type="text"
                   required
                   placeholder="VD: Quần áo đang tăng tốc cao"

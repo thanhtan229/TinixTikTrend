@@ -539,8 +539,9 @@ export const CollectionsWorkspace: React.FC<CollectionsWorkspaceProps> = ({
             <h3 className="text-sm font-semibold text-white">Tạo Bộ sưu tập mới</h3>
             <form onSubmit={handleCreate} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1">Tên bộ sưu tập</label>
+                <label htmlFor="new-workspace-collection-name" className="block text-slate-400 mb-1">Tên bộ sưu tập</label>
                 <input
+                  id="new-workspace-collection-name"
                   type="text"
                   required
                   placeholder="VD: Sản phẩm Tiềm năng Q4"
@@ -550,8 +551,9 @@ export const CollectionsWorkspace: React.FC<CollectionsWorkspaceProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Mô tả (tùy chọn)</label>
+                <label htmlFor="new-workspace-collection-description" className="block text-slate-400 mb-1">Mô tả (tùy chọn)</label>
                 <textarea
+                  id="new-workspace-collection-description"
                   rows={2}
                   placeholder="Mô tả mục tiêu của bộ sưu tập..."
                   value={newColDesc}
@@ -586,8 +588,9 @@ export const CollectionsWorkspace: React.FC<CollectionsWorkspaceProps> = ({
             <h3 className="text-sm font-semibold text-white">Chỉnh sửa Bộ sưu tập</h3>
             <form onSubmit={handleUpdateCollection} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1">Tên bộ sưu tập</label>
+                <label htmlFor="edit-workspace-collection-name" className="block text-slate-400 mb-1">Tên bộ sưu tập</label>
                 <input
+                  id="edit-workspace-collection-name"
                   type="text"
                   required
                   value={editColName}
@@ -596,8 +599,9 @@ export const CollectionsWorkspace: React.FC<CollectionsWorkspaceProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Mô tả</label>
+                <label htmlFor="edit-workspace-collection-description" className="block text-slate-400 mb-1">Mô tả</label>
                 <textarea
+                  id="edit-workspace-collection-description"
                   rows={2}
                   value={editColDesc}
                   onChange={(e) => setEditColDesc(e.target.value)}

@@ -21,7 +21,9 @@ export default [
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
+      '@next/next/no-img-element': 'off',
     },
   },
   {

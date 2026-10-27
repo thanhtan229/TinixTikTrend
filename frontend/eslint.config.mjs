@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import nextPlugin from '@next/eslint-plugin-next';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -16,8 +17,12 @@ export default [
   {
     plugins: {
       'react-hooks': reactHooks,
+      '@next/next': nextPlugin,
     },
-    rules: reactHooks.configs.recommended.rules,
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
+    },
   },
   {
     files: ['**/*.{js,jsx,ts,tsx}'],

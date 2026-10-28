@@ -54,8 +54,12 @@ Write-Step 'Preparing backend virtualenv'
 $venvPython = Join-Path $backendDir '.venv\Scripts\python.exe'
 if (Test-Path $venvPython) {
     # A venv built by another Python version would silently run the wrong interpreter.
-    $venvVersion = & $venvPython --version 2>&1
-    if ($LASTEXITCODE -ne 0 -or "$venvVersion" -notmatch '^Python 3\.11\.') {
+    # Same stderr rule as the Python probes: run under 'Continue' and judge by exit code and output.
+    $savedPref = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $venvVersion = & $venvPython --version 2>&1 } finally { $ErrorActionPreference = $savedPref }
+    $venvExit = $LASTEXITCODE
+    if ($venvExit -ne 0 -or "$venvVersion" -notmatch '^Python 3\.11\.') {
         Fail "Existing backend\.venv is not Python 3.11 ($venvVersion). Delete backend\.venv and re-run setup."
     }
 } else {

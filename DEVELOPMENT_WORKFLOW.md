@@ -568,6 +568,24 @@ Build để kiểm tra code là được phép và được khuyến khích khi 
 
 ---
 
+## 17. Tự khởi động dịch vụ (Scheduled Task)
+
+Máy phát triển có tác vụ Windows Task Scheduler tên `TinixTrendHunter-Autostart`, chạy dưới tài khoản hiện tại (kiểu Interactive, không cần quyền admin), để backend và frontend tự khởi động lại sau khi đăng nhập và sau khi máy resume từ sleep:
+
+- Trigger 1: đăng nhập (`AtLogOn`).
+- Trigger 2: sự kiện `Microsoft-Windows-Power-Troubleshooter` ID 1 (resume từ sleep).
+- Lệnh: `powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<repo>\scripts\start_services.ps1" -Target All -RestartOld -TimeoutSec 120`.
+
+Tác vụ là cấu hình của máy, không nằm trong repo. Khi cần kiểm tra hoặc gỡ bỏ:
+
+```powershell
+Get-ScheduledTask -TaskName "TinixTrendHunter-Autostart" | Select-Object TaskName,State
+Start-ScheduledTask -TaskName "TinixTrendHunter-Autostart"        # chạy thử
+Unregister-ScheduledTask -TaskName "TinixTrendHunter-Autostart" -Confirm:$false   # gỡ bỏ
+```
+
+Lưu ý: tác vụ dùng `-RestartOld`, nên mỗi lần chạy sẽ dừng và khởi động lại các dịch vụ do dự án này sở hữu (`services.log` ghi nhận "Stopped owned ..."). Nếu cổng 8000 bị dự án khác chiếm, backend không khởi động được; khi đó xử lý theo mục 10 và kiểm tra `logs/services.log`.
+
 ## Default Development Loop
 
 Mặc định sử dụng workflow:

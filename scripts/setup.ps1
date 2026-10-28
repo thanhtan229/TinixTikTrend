@@ -68,7 +68,11 @@ if (Test-Path $venvPython) {
 }
 & $venvPython -m pip install --quiet --upgrade pip
 if ($LASTEXITCODE -ne 0) { Fail 'pip upgrade failed.' }
-& $venvPython -m pip install --quiet -r (Join-Path $backendDir 'requirements.txt')
+# Prefer the exact-version lock (reproducible); fall back to the ranges in requirements.txt.
+$lockFile = Join-Path $backendDir 'requirements.lock.txt'
+$requirementsFile = if (Test-Path $lockFile) { $lockFile } else { Join-Path $backendDir 'requirements.txt' }
+Write-Host "Installing backend requirements from $(Split-Path -Leaf $requirementsFile)"
+& $venvPython -m pip install --quiet -r $requirementsFile
 if ($LASTEXITCODE -ne 0) { Fail 'Installing backend requirements failed.' }
 
 # 4. Playwright Chromium (used by the TikTok collector)

@@ -1,0 +1,2 @@
+# Normalize line endings to LF in the repository; avoids CRLF drift warnings on Windows.
+* text=auto

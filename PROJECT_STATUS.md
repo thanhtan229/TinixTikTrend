@@ -17,7 +17,9 @@ Updated: 2026-10-07. Phase 6 — Affiliate Economics & Profitability Intelligenc
 Phase 6 Status: **Phase 6 — Affiliate Economics & Profitability Intelligence** (`COMPLETE / ACCEPTED`; Research: `CLOSED / ACCEPTED`; Architecture: `ADR-005 ACCEPTED`; Plan: `APPROVED` via [`PHASE_6_PLAN.md`](PHASE_6_PLAN.md); 42 acceptance criteria accepted; source-release qualification and lifecycle closure remain historical at revision `63bf47a329ecb78631165a2d677119ff39e105e4`). Phase 7's corrected research, ADR-006, and [`PHASE_7_PLAN.md`](PHASE_7_PLAN.md) were approved and have since been implemented and accepted; see [`PROJECT_CONTROL_PHASE7_COMPLETION_ACCEPTED.md`](PROJECT_CONTROL_PHASE7_COMPLETION_ACCEPTED.md) and [`PHASE_7_COMPLETION_REPORT.md`](PHASE_7_COMPLETION_REPORT.md). The earlier Phase 7 package review remains the record of authorization, not the current implementation status. Current compatibility is `"4"`; current lifecycle and qualification are recorded above and in [`PROJECT_FINAL_RELEASE_REPORT.md`](PROJECT_FINAL_RELEASE_REPORT.md). Supported release boundary is Windows / local / source-based runtime. Standalone executable/installer packaging remains deferred. Remote publication was not performed.
 
 
-## Implemented and validated
+> **Historical record:** The sections below are point-in-time notes from earlier phases and may be superseded. Where they conflict with "Current phase and release state" above, the current state governs.
+
+## Implemented and validated (historical)
 
 - **Baseline validation: PASS.** Review findings C1, H1–H8 and M1–M3 remain addressed.
 - **Gate 1 (Live validation across several verified VN PDPs): VALIDATED / PASS.** 8 verified live TikTok Shop VN products successfully ingested, parsed, and tracked in database (Products 21–28):
@@ -39,7 +41,7 @@ Phase 6 Status: **Phase 6 — Affiliate Economics & Profitability Intelligence**
 - Dependency audit & security assessment: Current repository-aware QA identified **1 High `source-map-js` advisory** in the production dependency graph (`GHSA-68fv-2mgg-jv7q`). Assessment: reaches the dependency graph through Next/PostCSS/CSS-build tooling; QA found no known path from untrusted runtime input to the vulnerable behavior; presently assessed as build-time-only / not production-runtime reachable; no functional or security exploit was demonstrated against the supported local runtime; classified as non-blocking dependency/security debt for this release (historical claim of 0 production vulnerabilities superseded). Additionally, devDependencies contain 7 high findings from `GHSA-vfj7-8cjw-p6xm` on `braces` (AST stack-overflow DoS on untrusted glob inputs), required transitively by `tailwindcss@3.4.19` and `eslint-config-next@15.5.27`; runtime reachability is zero; preserved as non-blocking development debt.
 - WMI process management verified: backend (FastAPI :8000) and frontend (Next.js :3000) run detached, persist across shell/task boundaries, and pass health checks.
 
-## Validation and runtime
+## Validation and runtime (historical, as of Phase 6/7 closure)
  
 - Backend: **223 pytest PASS**, 5 warnings (including StarletteDeprecationWarning).
 - Frontend: **52 tests PASS** across 9 test suites in Vitest.

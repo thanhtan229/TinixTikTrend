@@ -15,15 +15,22 @@ function Fail($message) { Write-Host "[SETUP FAILED] $message" -ForegroundColor 
 
 # 1. Python 3.11 (the project's validated runtime)
 Write-Step 'Checking Python 3.11'
+# Windows PowerShell 5.1 turns native stderr into terminating errors under 'Stop',
+# so probes run with 'Continue' locally and are judged by $LASTEXITCODE and output.
 $pyExe = $null
 $pyArgs = @()
 if (Get-Command py.exe -ErrorAction SilentlyContinue) {
-    & py.exe -3.11 --version *> $null
+    $savedPref = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { & py.exe -3.11 --version *> $null } finally { $ErrorActionPreference = $savedPref }
     if ($LASTEXITCODE -eq 0) { $pyExe = 'py.exe'; $pyArgs = @('-3.11') }
 }
 if (-not $pyExe -and (Get-Command python.exe -ErrorAction SilentlyContinue)) {
-    $version = & python.exe --version 2>&1
-    if ($version -match '^Python 3\.11\.') { $pyExe = 'python.exe' }
+    $savedPref = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $version = & python.exe --version 2>&1 } finally { $ErrorActionPreference = $savedPref }
+    # The Microsoft Store alias on PATH exits non-zero and prints a notice; it must not match.
+    if ($LASTEXITCODE -eq 0 -and "$version" -match '^Python 3\.11\.') { $pyExe = 'python.exe' }
 }
 if (-not $pyExe) {
     Fail 'Python 3.11 not found. Install Python 3.11 from python.org (tick "Add to PATH") or via the py launcher, then re-run.'
@@ -35,12 +42,23 @@ Write-Step 'Checking Node.js'
 if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {
     Fail 'Node.js not found. Install the LTS release from nodejs.org, then re-run.'
 }
-Write-Host "Node: $(& node.exe --version)"
+if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) {
+    Fail 'npm not found. Reinstall Node.js from nodejs.org so npm is included, then re-run.'
+}
+$nodeVersion = & node.exe --version
+if ($LASTEXITCODE -ne 0) { Fail 'node.exe failed to run. Reinstall Node.js, then re-run.' }
+Write-Host "Node: $nodeVersion"
 
 # 3. Backend virtualenv and dependencies
 Write-Step 'Preparing backend virtualenv'
 $venvPython = Join-Path $backendDir '.venv\Scripts\python.exe'
-if (-not (Test-Path $venvPython)) {
+if (Test-Path $venvPython) {
+    # A venv built by another Python version would silently run the wrong interpreter.
+    $venvVersion = & $venvPython --version 2>&1
+    if ($LASTEXITCODE -ne 0 -or "$venvVersion" -notmatch '^Python 3\.11\.') {
+        Fail "Existing backend\.venv is not Python 3.11 ($venvVersion). Delete backend\.venv and re-run setup."
+    }
+} else {
     & $pyExe @pyArgs -m venv (Join-Path $backendDir '.venv')
     if ($LASTEXITCODE -ne 0) { Fail 'Failed to create backend .venv.' }
 }

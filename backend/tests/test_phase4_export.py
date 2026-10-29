@@ -697,7 +697,7 @@ def test_p4_ac_09_multi_batch_1000_historical_streaming(tmp_path, monkeypatch):
 
     assert HISTORICAL_STREAM_BATCH_SIZE == 1000
 
-    now = datetime(2026, 10, 5, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
     product_id = 101
 
     with TestingSessionLocal() as db:

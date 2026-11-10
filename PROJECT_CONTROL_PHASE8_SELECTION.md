@@ -17,3 +17,7 @@ Starting a speculative Phase 8 would add scope without an approved user outcome,
 - Keep remote publication separate; do not push.
 - Keep P7-AC-19 metric-source ingestion deferred until a compliant source is validated.
 - Record current release qualification and final repository state in [`PROJECT_FINAL_RELEASE_REPORT.md`](PROJECT_FINAL_RELEASE_REPORT.md).
+
+## Operational confirmation — 2026-11-10
+
+A bounded manual keyword crawl using `son-moi` completed as run 114 with status `partial`. It found no verified Shop product URLs through discovery, while the tracked-product refresh updated 9 products and created 9 snapshots. The persisted error identifies the discovery stage. This confirms that broad keyword discovery remains deferred in the current environment. Continue using full TikTok Shop PDP URLs supplied by the operator. See [`DISCOVERY_VALIDATION_2026-11-10.md`](DISCOVERY_VALIDATION_2026-11-10.md).

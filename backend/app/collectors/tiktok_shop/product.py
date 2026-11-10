@@ -4,7 +4,7 @@ from app.collectors.tiktok_shop.client import TikTokHttpClient
 from app.collectors.tiktok_shop.browser import BrowserManager
 from app.collectors.tiktok_shop.parser import extract_product_from_html, is_security_check
 from app.collectors.tiktok_shop.exceptions import BlockedError
-from app.collectors.tiktok_shop.session import load_state, SessionStateError
+from app.collectors.tiktok_shop.session import SessionStateError
 from app.collectors.tiktok_shop.schemas import ExtractedProduct
 from app.core.logging import log_event
 from app.core.urls import validate_product_url
@@ -25,7 +25,7 @@ class ProductCollector:
         
         # 1. HTTP First
         html = await self.http_client.fetch_html(url)
-        if is_security_check(html) and not load_state():
+        if is_security_check(html):
             raise BlockedError('TikTok returned a security check instead of product data.')
         if html:
             product = extract_product_from_html(html, page_url=url)

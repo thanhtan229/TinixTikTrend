@@ -2,7 +2,6 @@ import urllib.parse
 from app.collectors.tiktok_shop.schemas import DiscoveryQuery, DiscoveryResult
 from app.collectors.tiktok_shop.parser import extract_product_urls_from_listing_html, is_security_check
 from app.collectors.tiktok_shop.exceptions import BlockedError
-from app.collectors.tiktok_shop.session import load_state
 from app.core.urls import validate_product_url
 from app.core.logging import log_event
 
@@ -37,7 +36,7 @@ class ProductDiscovery:
         url = self.build_discovery_url(query)
         urls = []
         html = await self.http_client.fetch_html(url)
-        if is_security_check(html) and not load_state():
+        if is_security_check(html):
             raise BlockedError('TikTok returned a security check instead of discovery data.')
         if html:
             urls = extract_product_urls_from_listing_html(html, url)

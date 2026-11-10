@@ -9,7 +9,20 @@ from app.core.urls import validate_product_url, product_id_from_url
 
 
 def is_security_check(html: str) -> bool:
-    return bool(re.search(r'<title[^>]*>\s*(?:Security Check|Access Denied)\s*</title>', html or '', re.I))
+    document = html or ''
+    title = re.search(r'<title[^>]*>(.*?)</title>', document, re.I | re.S)
+    if title and re.search(r'\b(?:security check|access denied|captcha|verify you are human|unusual traffic)\b',
+                           title.group(1), re.I):
+        return True
+    challenge_markers = (
+        r'id=["\']captcha["\']',
+        r'class=["\'][^"\']*captcha',
+        r'verify you are human',
+        r'unusual traffic',
+        r'security verification',
+        r'challenge-platform',
+    )
+    return any(re.search(marker, document, re.I) for marker in challenge_markers)
 
 
 def parse_numeric_string(raw: Optional[str]) -> Optional[int]:

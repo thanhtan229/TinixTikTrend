@@ -9,6 +9,8 @@ from app.core.config import settings
 from app.core.logging import logger, log_event
 from app.collectors.tiktok_shop.browser import MOBILE_UA
 from app.collectors.tiktok_shop.session import load_state, http_cookies
+from app.collectors.tiktok_shop.exceptions import BlockedError
+from app.collectors.tiktok_shop.parser import is_security_check
 
 
 class TikTokHttpClient:
@@ -47,7 +49,8 @@ class TikTokHttpClient:
 
     async def fetch_html(self, url: str) -> Optional[str]:
         """
-        Fetches HTML string for a URL with retries and exponential backoff.
+        Fetches HTML with bounded retry for transient failures. Access challenges
+        stop immediately so the crawler does not keep requesting a blocked route.
         """
         url = validate_tiktok_url(url)
         async with self._semaphore:
@@ -69,15 +72,21 @@ class TikTokHttpClient:
                         raise ValueError("Too many redirects.")
                     
                     if response.status_code == 200:
+                        if is_security_check(response.text):
+                            log_event("request_blocked", f"Challenge page returned for {url}")
+                            raise BlockedError("TikTok returned a security challenge.", reason="security_check")
                         return response.text
                     elif response.status_code in (429, 403):
                         log_event("request_failed", f"HTTP {response.status_code} for {url}", {"status_code": response.status_code})
-                        if attempt < settings.max_retries:
-                            backoff = (2 ** attempt) + random.uniform(0.5, 2.0)
-                            await asyncio.sleep(backoff)
+                        reason = "rate_limited" if response.status_code == 429 else "access_denied"
+                        raise BlockedError(
+                            f"TikTok returned HTTP {response.status_code}; request paused.", reason=reason
+                        )
                     else:
                         log_event("request_failed", f"HTTP {response.status_code} for {url}", {"status_code": response.status_code})
                         return None
+                except BlockedError:
+                    raise
                 except Exception as e:
                     log_event("request_failed", f"Network error on {url}: {str(e)}", {"error": str(e)})
                     if attempt < settings.max_retries:

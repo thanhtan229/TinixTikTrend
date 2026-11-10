@@ -6,6 +6,7 @@ from app.collectors.tiktok_shop.parser import (
     parse_price_string,
     extract_product_from_html,
     extract_product_urls_from_listing_html,
+    is_security_check,
 )
 from app.collectors.tiktok_shop.schemas import ExtractedProduct
 
@@ -19,6 +20,22 @@ def test_parse_numeric_strings():
     assert parse_numeric_string("500") == 500
     assert parse_numeric_string(None) is None
     assert parse_numeric_string("invalid") is None
+
+
+@pytest.mark.parametrize('html', [
+    '<title>Security Check</title>',
+    '<title>Access Denied</title>',
+    '<main id="captcha">Verify</main>',
+    '<div class="captcha-container">Verify you are human</div>',
+    '<p>Unusual traffic detected</p>',
+    '<div>Security verification required</div>',
+])
+def test_security_challenge_pages_are_detected(html):
+    assert is_security_check(html)
+
+
+def test_normal_page_is_not_misclassified_as_security_challenge():
+    assert not is_security_check('<title>TikTok Shop Vietnam</title><p>Popular products</p>')
 
 
 def test_parse_price_strings():

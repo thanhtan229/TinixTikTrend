@@ -18,11 +18,17 @@ from app.core.logging import logger, log_event
 
 _crawler_lock = asyncio.Lock()
 _is_crawler_running = False
-def blocked_message() -> str:
-    prefix = 'TikTok trả trang Security Check thay cho dữ liệu. '
+def blocked_message(error: Optional[BlockedError] = None) -> str:
+    reason = getattr(error, 'reason', 'security_check')
+    if reason == 'rate_limited':
+        return 'TikTok đã giới hạn tần suất yêu cầu (HTTP 429). Đã dừng lượt quét; hãy đợi trước khi thử lại. Chưa lưu dữ liệu từ trang này.'
+    elif reason == 'access_denied':
+        prefix = 'TikTok từ chối yêu cầu (HTTP 403). '
+    else:
+        prefix = 'TikTok trả Security Check thay cho dữ liệu. '
     if session_status() == 'available':
-        return prefix + 'Đã nạp phiên cục bộ nhưng trang sản phẩm vẫn bị chặn. Hãy thử URL sản phẩm đang mở được trong phiên đăng nhập hoặc thử lại sau. Chưa lưu số liệu từ trang này.'
-    return prefix + 'Chạy CONNECT_TIKTOK.bat để tự đăng nhập và lưu phiên cục bộ, rồi thử lại. Chưa lưu số liệu từ trang này.'
+        return prefix + 'Phiên cục bộ đã được nạp nhưng yêu cầu vẫn bị chặn. Hãy xử lý xác minh thủ công trong CONNECT_TIKTOK.bat, lưu lại phiên rồi quét lại. Chưa lưu số liệu từ trang này.'
+    return prefix + 'Mở CONNECT_TIKTOK.bat để tự đăng nhập hoặc xử lý xác minh, lưu phiên cục bộ rồi quét lại. Chưa lưu số liệu từ trang này.'
 
 
 class CrawlService:
@@ -152,11 +158,11 @@ class CrawlService:
                         candidates.extend(found.product_urls)
                         direct.extend(found.products)
                     except SessionStateError as exc:
-                        errors.append(exc.message)
-                    except BlockedError:
-                        errors.append(blocked_message())
+                        errors.append(f"Discovery: {exc.message}")
+                    except BlockedError as exc:
+                        errors.append(f"Discovery: {blocked_message(exc)}")
                     except Exception:
-                        errors.append('Không tìm được link TikTok Shop đã xác minh. Dán URL đầy đủ của sản phẩm đang truy cập được hoặc thử lại sau.')
+                        errors.append('Discovery: Không tìm được link TikTok Shop đã xác minh. Dán URL đầy đủ của sản phẩm đang truy cập được hoặc thử lại sau.')
                 urls = {}
                 for candidate in candidates:
                     try:
@@ -165,7 +171,7 @@ class CrawlService:
                         # accessible PDP with an older tracked URL for the same ID.
                         urls.setdefault(product_id_from_url(clean), clean)
                     except ValueError:
-                        errors.append('Đã bỏ qua một URL sản phẩm không hợp lệ.')
+                        errors.append('Product URL validation: Đã bỏ qua một URL sản phẩm không hợp lệ.')
                 crawl_run.products_found = len(set(urls) | {p.external_product_id for p in direct})
                 self.db.commit()
                 processed = set()
@@ -178,7 +184,7 @@ class CrawlService:
                         )
                         processed.add(product.external_product_id)
                     except Exception:
-                        errors.append('Một sản phẩm tìm thấy chưa xác minh được hoặc chưa lưu được.')
+                        errors.append('Discovered product save: Sản phẩm tìm thấy chưa xác minh được hoặc chưa lưu được.')
                 for external_id, url in urls.items():
                     if external_id in processed:
                         continue
@@ -192,13 +198,13 @@ class CrawlService:
                         processed.add(external_id)
                     except SessionStateError as exc:
                         self.db.rollback()
-                        errors.append(exc.message)
-                    except BlockedError:
+                        errors.append(f"Product URL refresh: {exc.message}")
+                    except BlockedError as exc:
                         self.db.rollback()
-                        errors.append(blocked_message())
+                        errors.append(f"Product URL refresh: {blocked_message(exc)}")
                     except Exception:
                         self.db.rollback()
-                        errors.append('Một trang sản phẩm không truy cập được, bị chặn, chưa hỗ trợ hoặc chưa lưu được.')
+                        errors.append('Product URL refresh: Trang sản phẩm không truy cập được, bị chặn, chưa hỗ trợ hoặc chưa lưu được.')
                 crawl_run.status = ('partial' if crawl_run.snapshots_created else 'failed') if errors else 'completed'
                 crawl_run.error_message = ' '.join(dict.fromkeys(errors))[:2000] if errors else None
                 crawl_run.finished_at = datetime.now(timezone.utc)

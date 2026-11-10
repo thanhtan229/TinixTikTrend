@@ -40,8 +40,8 @@ async def test_saved_session_blocked_run_recovers_with_accurate_reason(isolated_
     monkeypatch.setattr(cs, 'session_status', lambda: 'available')
     run = await cs.CrawlService(isolated_db).execute_crawl(product_urls=[URL])
     assert run.status == 'failed' and run.snapshots_created == 0
-    assert 'Đã nạp phiên cục bộ' in run.error_message
-    assert 'CONNECT_TIKTOK.bat' not in run.error_message
+    assert 'Phiên cục bộ đã được nạp' in run.error_message
+    assert 'CONNECT_TIKTOK.bat' in run.error_message
     assert not cs.CrawlService.is_running()
 
 
@@ -55,6 +55,25 @@ async def test_security_check_stops_without_browser_or_fabricated_product():
     with pytest.raises(BlockedError):
         await ProductDiscovery(http, browser).discover(DiscoveryQuery())
     browser.get_new_page.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_crawl_error_message_identifies_discovery_and_product_url_stage(isolated_db, monkeypatch):
+    class Collector:
+        async def discover_products(self, query):
+            raise BlockedError('rate limited', reason='rate_limited')
+        async def get_product(self, url):
+            raise BlockedError('challenge', reason='security_check')
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(cs, 'TikTokShopCollector', Collector)
+    run = await cs.CrawlService(isolated_db).execute_crawl(
+        product_urls=[URL], keywords=['son-moi']
+    )
+    assert run.status == 'failed'
+    assert 'Discovery: TikTok đã giới hạn tần suất' in run.error_message
+    assert 'Product URL refresh: TikTok trả Security Check' in run.error_message
 
 
 @pytest.fixture
@@ -117,6 +136,45 @@ async def test_redirect_not_followed_into_private_network(monkeypatch):
     monkeypatch.setattr(module.settings,'max_retries',1)
     assert await http.fetch_html(URL) is None
     assert calls==[URL]
+    await http.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status_code', [403, 429])
+async def test_access_denial_stops_without_retry(status_code, monkeypatch):
+    from app.collectors.tiktok_shop import client as module
+    calls = []
+    async def transport(request):
+        calls.append(str(request.url))
+        return httpx.Response(status_code, text='blocked')
+    http = TikTokHttpClient()
+    http._client = httpx.AsyncClient(transport=httpx.MockTransport(transport), follow_redirects=False)
+    monkeypatch.setattr(module, 'validate_public_destination', AsyncMock())
+    monkeypatch.setattr(http, '_apply_rate_limit', AsyncMock())
+    monkeypatch.setattr(module.settings, 'max_retries', 3)
+    with pytest.raises(BlockedError) as blocked:
+        await http.fetch_html(URL)
+    assert blocked.value.reason == ('rate_limited' if status_code == 429 else 'access_denied')
+    assert calls == [URL]
+    await http.close()
+
+
+@pytest.mark.asyncio
+async def test_http_200_challenge_stops_without_retry_or_browser(monkeypatch):
+    from app.collectors.tiktok_shop import client as module
+    calls = []
+    async def transport(request):
+        calls.append(str(request.url))
+        return httpx.Response(200, text='<title>Security Check</title>')
+    http = TikTokHttpClient()
+    http._client = httpx.AsyncClient(transport=httpx.MockTransport(transport), follow_redirects=False)
+    monkeypatch.setattr(module, 'validate_public_destination', AsyncMock())
+    monkeypatch.setattr(http, '_apply_rate_limit', AsyncMock())
+    monkeypatch.setattr(module.settings, 'max_retries', 3)
+    with pytest.raises(BlockedError) as blocked:
+        await http.fetch_html(URL)
+    assert blocked.value.reason == 'security_check'
+    assert calls == [URL]
     await http.close()
 
 

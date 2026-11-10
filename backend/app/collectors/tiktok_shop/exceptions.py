@@ -13,7 +13,9 @@ class ParseError(CollectorError):
 
 class BlockedError(CollectorError):
     """Raised when request is blocked (HTTP 403, 429, CAPTCHA)."""
-    pass
+    def __init__(self, message: str, reason: str = "security_check"):
+        self.reason = reason
+        super().__init__(message)
 
 
 class BrowserInitError(CollectorError):

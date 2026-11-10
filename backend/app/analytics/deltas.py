@@ -63,8 +63,21 @@ def calculate_product_deltas(snapshots: List[SnapshotData], current_time: Option
         latest_rating=latest.rating, latest_price=latest.price,
         latest_commission_rate=latest.commission_rate, last_observed_at=observed,
         is_stale=(now - observed).total_seconds() > 8 * 3600 or observed > now + timedelta(minutes=5),
-        is_anomaly=any(a.sold_count is not None and b.sold_count is not None and b.sold_count < a.sold_count
-                       for a, b in zip(ordered, ordered[1:])))
+        # TikTok may revise cumulative sold/review counters downward. Preserve
+        # raw snapshots, but disclose reduced data quality to ranking and UI.
+        is_anomaly=any(
+            (
+                a.sold_count is not None
+                and b.sold_count is not None
+                and b.sold_count < a.sold_count
+            )
+            or (
+                a.review_count is not None
+                and b.review_count is not None
+                and b.review_count < a.review_count
+            )
+            for a, b in zip(ordered, ordered[1:])
+        ))
     if metrics.is_stale:
         return metrics
     past = ordered[:-1]

@@ -99,6 +99,20 @@ def test_negative_anomaly_handling():
     assert deltas.sold_delta_24h == 0
 
 
+def test_review_count_drop_is_anomaly():
+    now = datetime(2026, 9, 2, 12, 0, 0, tzinfo=timezone.utc)
+    snapshots = [
+        SnapshotData(captured_at=now - timedelta(hours=24), sold_count=1000, review_count=80),
+        SnapshotData(captured_at=now, sold_count=1100, review_count=76),
+    ]
+
+    deltas = calculate_product_deltas(snapshots, current_time=now)
+
+    assert deltas.is_anomaly is True
+    assert deltas.sold_delta_24h == 100
+    assert deltas.review_delta_24h == 0
+
+
 def test_freshness_and_rating_scores():
     now = datetime(2026, 9, 2, 12, 0, 0, tzinfo=timezone.utc)
     

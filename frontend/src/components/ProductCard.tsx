@@ -127,6 +127,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Signals & Badges */}
         <div className="flex flex-wrap gap-1.5 mt-3">
           {deltas.is_stale && <span className="text-xs text-amber-400 font-medium">⚠️ Dữ liệu cũ; cần quét lại</span>}
+          {deltas.is_anomaly && (
+            <span
+              className="text-xs text-rose-400 font-medium"
+              title="Lịch sử có sold hoặc review count giảm; giữ nguyên dữ liệu và kiểm tra trước khi ra quyết định."
+            >
+              ⚠️ Biến động dữ liệu; cần kiểm tra
+            </span>
+          )}
           {product.evidence?.ranking_state === "insufficient_measured_signal" && (
             <span className="text-xs text-slate-400 italic">Chưa đủ dữ liệu 2 chu kỳ đo lường</span>
           )}

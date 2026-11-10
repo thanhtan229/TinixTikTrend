@@ -257,6 +257,17 @@ export default function ProductDetailPage() {
           <EvidenceBadge evidence={analysis.evidence} size="md" />
         </div>
 
+        {deltas.is_anomaly && (
+          <div
+            className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300"
+            role="alert"
+          >
+            <span className="font-semibold">⚠️ Biến động dữ liệu cần kiểm tra:</span>{" "}
+            lịch sử sold hoặc review count có lần giảm. Số liệu gốc vẫn được giữ nguyên;
+            không nên dùng điểm này làm kết luận cuối cùng khi confidence còn thấp.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Evidence Coverage */}
           <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 space-y-2">
